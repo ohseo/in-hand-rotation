@@ -228,9 +228,6 @@ public class RotationInteractor : MonoBehaviour
 
         if (GetAngleAtVertex(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, out currAngle))
         {
-            float angleDifference = currAngle - origAngle;
-            Vector3 axis = rotationAxis;
-
             if (GetTriangleOrientation(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, origTriRotation, out currTriRotation))
             {
                 if (CalculateTriangleArea(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position) > areaThreshold)
@@ -239,24 +236,23 @@ public class RotationInteractor : MonoBehaviour
                     {
                         if (isReset)
                         {
-                            axis = currTriRotation * Vector3.up;
+                            float angleDifference = currAngle - origAngle;
+                            Vector3 triAxis = currTriRotation * Vector3.up;
                             Quaternion shearRotationDelta, deltaTriRotation;
                             if (scaleMode == 0)
                             {
-                                shearRotationDelta = Quaternion.AngleAxis(angleDifference * scaleFactor, axis);
-                                Quaternion delta = currTriRotation * Quaternion.Inverse(origTriRotation);
-                                float plainAngle;
-                                Vector3 rotAxis;
-                                delta.ToAngleAxis(out plainAngle, out rotAxis);
-                                deltaTriRotation = Quaternion.AngleAxis(plainAngle * scaleFactor, rotAxis);
+                                shearRotationDelta = Quaternion.AngleAxis(angleDifference, triAxis);
+                                deltaTriRotation = currTriRotation * Quaternion.Inverse(origTriRotation);
+                                Quaternion shearAndRotation = shearRotationDelta * deltaTriRotation;
+                                shearAndRotation.ToAngleAxis(out float plainAngle, out Vector3 rotAxis);
+                                cube.transform.rotation = Quaternion.AngleAxis(plainAngle * scaleFactor, rotAxis) * origCubeRotation;
                             }
                             else
                             {
-                                shearRotationDelta = Quaternion.AngleAxis(angleDifference, axis);
+                                shearRotationDelta = Quaternion.AngleAxis(angleDifference, triAxis);
                                 deltaTriRotation = currTriRotation * Quaternion.Inverse(origTriRotation);
+                                cube.transform.rotation = shearRotationDelta * deltaTriRotation * origCubeRotation;
                             }
-
-                            cube.transform.rotation = shearRotationDelta * deltaTriRotation * origCubeRotation;
                             // prevCubeRotation = cube.transform.rotation;
                             // prevCubeLocalRotation = Quaternion.Inverse(wristBone.Transform.rotation) * cube.transform.rotation;
                         }
