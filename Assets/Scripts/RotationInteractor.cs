@@ -21,6 +21,12 @@ public class RotationInteractor : MonoBehaviour
     private float prevAngle, currAngle;
     private Vector3 prevThumbPosition, prevSpherePosition;
     private Quaternion prevCMCRot_wrist, prevScaledCMCRot_wrist;
+
+    private Quaternion origCubeRotation, origCubeLocalRotation, origTriRotation;
+    private float origAngle;
+    private Vector3 origThumbPosition, origSpherePosition;
+    private Quaternion origCMCRot_wrist, origScaledCMCRot_wrist;
+
     private Vector3 rotationAxis = Vector3.forward;
     private float cubeScale = 0.03f;
     private float scaleFactor = 1.0f;
@@ -95,29 +101,31 @@ public class RotationInteractor : MonoBehaviour
         prevCMCRot_wrist = Quaternion.Inverse(wristBone.Transform.rotation) * thumbMetacarpal.Transform.rotation;
         prevScaledCMCRot_wrist = prevCMCRot_wrist;
 
-        if (!GetTriangleOrientation(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, prevTriRotation, out prevTriRotation))
+        origCubeRotation = Quaternion.identity;
+        origCubeLocalRotation = cube.transform.localRotation;
+        origThumbPosition = thumbMetacarpal.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
+        origSpherePosition = origThumbPosition;
+
+        origCMCRot_wrist = Quaternion.Inverse(wristBone.Transform.rotation) * thumbMetacarpal.Transform.rotation;
+        origScaledCMCRot_wrist = origCMCRot_wrist;
+
+        if (!GetTriangleOrientation(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, origTriRotation, out origTriRotation))
         {
-            prevTriRotation = cube.transform.localRotation;
+            origTriRotation = cube.transform.localRotation;
         }
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (Input.anyKey && !Input.GetKey(KeyCode.Space))
+        if ((Input.anyKey && !Input.GetKey(KeyCode.Space)) || (Input.GetKey(KeyCode.Space) && !isReset))
         {
-            prevThumbPosition = wristBone.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
-            prevSpherePosition = prevThumbPosition;
-            prevCMCRot_wrist = Quaternion.Inverse(wristBone.Transform.rotation) * thumbMetacarpal.Transform.rotation;
-            prevScaledCMCRot_wrist = prevCMCRot_wrist;
-        }
-
-        if (Input.GetKey(KeyCode.Space) && !isReset)
-        {
-            prevThumbPosition = wristBone.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
-            prevSpherePosition = prevThumbPosition;
-            prevCMCRot_wrist = Quaternion.Inverse(wristBone.Transform.rotation) * thumbMetacarpal.Transform.rotation;
-            prevScaledCMCRot_wrist = prevCMCRot_wrist;
+            origThumbPosition = wristBone.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
+            origSpherePosition = origThumbPosition;
+            origCMCRot_wrist = Quaternion.Inverse(wristBone.Transform.rotation) * thumbMetacarpal.Transform.rotation;
+            origScaledCMCRot_wrist = origCMCRot_wrist;
+            origCubeRotation = cube.transform.rotation;
+            origCubeLocalRotation = Quaternion.Inverse(wristBone.Transform.rotation) * cube.transform.rotation;
         }
 
         if (!Input.anyKey)
@@ -180,11 +188,11 @@ public class RotationInteractor : MonoBehaviour
         if (scaleMode == 1)
         {
             Vector3 currLocalPose = wristBone.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
-            Vector3 delta = currLocalPose - prevThumbPosition;
-            Vector3 exaggerated = prevSpherePosition + delta * scaleFactor;
+            Vector3 delta = currLocalPose - origThumbPosition;
+            Vector3 exaggerated = origSpherePosition + delta * scaleFactor;
             spheres[0].transform.position = wristBone.Transform.TransformPoint(exaggerated);
-            prevThumbPosition = currLocalPose;
-            prevSpherePosition = exaggerated;
+            // prevThumbPosition = currLocalPose;
+            // prevSpherePosition = exaggerated;
         }
         else if (scaleMode == 2)
         {
@@ -192,10 +200,10 @@ public class RotationInteractor : MonoBehaviour
             Quaternion currCMCRot = thumbMetacarpal.Transform.rotation;
 
             Quaternion currCMCRot_wrist = Quaternion.Inverse(currWristRot) * currCMCRot;
-            Quaternion deltaRot_wrist = Quaternion.Inverse(prevCMCRot_wrist) * currCMCRot_wrist;
+            Quaternion deltaRot_wrist = Quaternion.Inverse(origCMCRot_wrist) * currCMCRot_wrist;
             deltaRot_wrist.ToAngleAxis(out float angle, out Vector3 axis);
             Quaternion scaledRot_wrist = Quaternion.AngleAxis(angle * scaleFactor, axis);
-            Quaternion currScaledCMCRot_wrist = prevScaledCMCRot_wrist * scaledRot_wrist;
+            Quaternion currScaledCMCRot_wrist = origScaledCMCRot_wrist * scaledRot_wrist;
 
             Vector3 currCMCPos_wrist = wristBone.Transform.InverseTransformPoint(thumbMetacarpal.Transform.position);
             Vector3 currTipPos_CMC = thumbMetacarpal.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
@@ -203,8 +211,8 @@ public class RotationInteractor : MonoBehaviour
             Vector3 currScaledTipPos_wrist = currCMCPos_wrist + currScaledCMCRot_wrist * currTipPos_CMC;
             Vector3 currScaledTipPos = wristBone.Transform.TransformPoint(currScaledTipPos_wrist);
 
-            prevCMCRot_wrist = currCMCRot_wrist;
-            prevScaledCMCRot_wrist = currScaledCMCRot_wrist;
+            // prevCMCRot_wrist = currCMCRot_wrist;
+            // prevScaledCMCRot_wrist = currScaledCMCRot_wrist;
 
             spheres[0].transform.position = currScaledTipPos;
         }
@@ -220,10 +228,10 @@ public class RotationInteractor : MonoBehaviour
 
         if (GetAngleAtVertex(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, out currAngle))
         {
-            float angleDifference = currAngle - prevAngle;
+            float angleDifference = currAngle - origAngle;
             Vector3 axis = rotationAxis;
 
-            if (GetTriangleOrientation(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, prevTriRotation, out currTriRotation))
+            if (GetTriangleOrientation(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, origTriRotation, out currTriRotation))
             {
                 if (CalculateTriangleArea(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position) > areaThreshold)
                 {
@@ -232,36 +240,42 @@ public class RotationInteractor : MonoBehaviour
                         if (isReset)
                         {
                             axis = currTriRotation * Vector3.up;
-                            Quaternion shearRotationDelta;
+                            Quaternion shearRotationDelta, deltaTriRotation;
                             if (scaleMode == 0)
                             {
                                 shearRotationDelta = Quaternion.AngleAxis(angleDifference * scaleFactor, axis);
+                                Quaternion delta = currTriRotation * Quaternion.Inverse(origTriRotation);
+                                float plainAngle;
+                                Vector3 rotAxis;
+                                delta.ToAngleAxis(out plainAngle, out rotAxis);
+                                deltaTriRotation = Quaternion.AngleAxis(plainAngle * scaleFactor, rotAxis);
                             }
                             else
                             {
                                 shearRotationDelta = Quaternion.AngleAxis(angleDifference, axis);
+                                deltaTriRotation = currTriRotation * Quaternion.Inverse(origTriRotation);
                             }
-                            
-                            Quaternion deltaTriRotation = currTriRotation * Quaternion.Inverse(prevTriRotation);
 
-                            cube.transform.rotation = shearRotationDelta * deltaTriRotation * prevCubeRotation;
-                            prevCubeRotation = cube.transform.rotation;
-                            prevCubeLocalRotation = Quaternion.Inverse(wristBone.Transform.rotation) * cube.transform.rotation;
+                            cube.transform.rotation = shearRotationDelta * deltaTriRotation * origCubeRotation;
+                            // prevCubeRotation = cube.transform.rotation;
+                            // prevCubeLocalRotation = Quaternion.Inverse(wristBone.Transform.rotation) * cube.transform.rotation;
                         }
                         else
                         {
+                            origAngle = currAngle;
+                            origTriRotation = currTriRotation;
                             isReset = true;
                         }
 
                     }
                     else
                     {
-                        cube.transform.rotation = wristBone.Transform.rotation * prevCubeLocalRotation;
-                        prevCubeRotation = cube.transform.rotation;
+                        // cube.transform.rotation = wristBone.Transform.rotation * prevCubeLocalRotation;
+                        // origCubeRotation = cube.transform.rotation;
                     }
                 }
-                prevAngle = currAngle;
-                prevTriRotation = currTriRotation;
+                // prevAngle = currAngle;
+                // prevTriRotation = currTriRotation;
             }
         }
     }
