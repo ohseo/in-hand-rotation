@@ -17,22 +17,11 @@ public class RotationInteractor : MonoBehaviour
 
     [SerializeField]
     private GameObject cube;
-    private Quaternion prevCubeRotation;
-    private Quaternion prevCubeLocalRotation;
-    private Quaternion prevTriRotation;
-    private Quaternion currTriRotation;
-    private float prevAngle;
-    private float currAngle;
-    private Vector3 prevThumbPosition;
-    private Vector3 prevSpherePosition;
-    private Vector3 prevThumbProximalPosition;
-    private Vector3 prevMCP, prevCMC, prevThumbTip;
-    private Vector3 prevLocalMCP, prevScaledLocalMCP, prevLocalMCPDir, prevScaledLocalMCPDir;
-
+    private Quaternion prevCubeRotation, prevCubeLocalRotation, prevTriRotation, currTriRotation;
+    private float prevAngle, currAngle;
+    private Vector3 prevThumbPosition, prevSpherePosition;
     private Quaternion prevCMCRot_wrist, prevScaledCMCRot_wrist;
-    private Vector3 prevThumbMetacarpal;
     private Vector3 rotationAxis = Vector3.forward;
-    private Vector3 normal = Vector3.up;
     private float cubeScale = 0.03f;
     private float scaleFactor = 1.0f;
 
@@ -41,7 +30,7 @@ public class RotationInteractor : MonoBehaviour
 
     private List<GameObject> spheres = new List<GameObject>();
     private float sphereScale = 0.01f;
-    private float areaThreshold = 0.0001f;
+    private float areaThreshold = 0.0002f;
 
     private LineRenderer lineRenderer;
 
@@ -90,25 +79,18 @@ public class RotationInteractor : MonoBehaviour
         middleTipBone = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_MiddleTip);
         thumbTipBone = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbTip);
         // palmBone = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexProximal);
-        palmBone = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_Wrist);
         wristBone = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_Wrist);
         thumbMetacarpal = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbMetacarpal);
-        thumbProximal = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbProximal);
+        // thumbProximal = ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbProximal);
 
-        // spheres[1].transform.position = indexTipBone.Transform.position;
-        // spheres[2].transform.position = middleTipBone.Transform.position;
+        spheres[1].transform.position = indexTipBone.Transform.position;
+        spheres[2].transform.position = middleTipBone.Transform.position;
         spheres[0].transform.position = thumbTipBone.Transform.position;
-        spheres[1].transform.position = thumbProximal.Transform.position;
-        spheres[2].transform.position = thumbMetacarpal.Transform.position;
 
-        // prevCubeRotation = cube.transform.rotation;
         prevCubeRotation = Quaternion.identity;
         prevCubeLocalRotation = cube.transform.localRotation;
         prevThumbPosition = thumbMetacarpal.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
         prevSpherePosition = prevThumbPosition;
-        prevThumbMetacarpal = thumbProximal.Transform.position - thumbMetacarpal.Transform.position;
-        prevLocalMCP = thumbMetacarpal.Transform.InverseTransformPoint(thumbProximal.Transform.position);
-        prevScaledLocalMCP = thumbMetacarpal.Transform.InverseTransformPoint(thumbProximal.Transform.position);
 
         prevCMCRot_wrist = Quaternion.Inverse(wristBone.Transform.rotation) * thumbMetacarpal.Transform.rotation;
         prevScaledCMCRot_wrist = prevCMCRot_wrist;
@@ -117,11 +99,6 @@ public class RotationInteractor : MonoBehaviour
         {
             prevTriRotation = cube.transform.localRotation;
         }
-
-        // if (!GetAngleAtVertex(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, out prevAngle))
-        // {
-        //     prevAngle = 0f;
-        // }
     }
 
     // Update is called once per frame
@@ -213,7 +190,6 @@ public class RotationInteractor : MonoBehaviour
         {
             Quaternion currWristRot = wristBone.Transform.rotation;
             Quaternion currCMCRot = thumbMetacarpal.Transform.rotation;
-            Quaternion currMCPRot = thumbProximal.Transform.rotation;
 
             Quaternion currCMCRot_wrist = Quaternion.Inverse(currWristRot) * currCMCRot;
             Quaternion deltaRot_wrist = Quaternion.Inverse(prevCMCRot_wrist) * currCMCRot_wrist;
@@ -245,7 +221,7 @@ public class RotationInteractor : MonoBehaviour
         if (GetAngleAtVertex(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, out currAngle))
         {
             float angleDifference = currAngle - prevAngle;
-            Vector3 actualRotationAxis = rotationAxis;
+            Vector3 axis = rotationAxis;
 
             if (GetTriangleOrientation(spheres[0].transform.position, spheres[1].transform.position, spheres[2].transform.position, prevTriRotation, out currTriRotation))
             {
@@ -255,14 +231,22 @@ public class RotationInteractor : MonoBehaviour
                     {
                         if (isReset)
                         {
-                            actualRotationAxis = currTriRotation * Vector3.up;
-                            // Quaternion shearRotationDelta = Quaternion.AngleAxis(angleDifference * scaleFactor, actualRotationAxis);
-                            Quaternion shearRotationDelta = Quaternion.AngleAxis(angleDifference, actualRotationAxis);
+                            axis = currTriRotation * Vector3.up;
+                            Quaternion shearRotationDelta;
+                            if (scaleMode == 0)
+                            {
+                                shearRotationDelta = Quaternion.AngleAxis(angleDifference * scaleFactor, axis);
+                            }
+                            else
+                            {
+                                shearRotationDelta = Quaternion.AngleAxis(angleDifference, axis);
+                            }
+                            
                             Quaternion deltaTriRotation = currTriRotation * Quaternion.Inverse(prevTriRotation);
 
-                            prevCubeRotation = shearRotationDelta * deltaTriRotation * prevCubeRotation;
-                            cube.transform.rotation = prevCubeRotation;
-                            prevCubeLocalRotation = Quaternion.Inverse(palmBone.Transform.rotation) * cube.transform.rotation;
+                            cube.transform.rotation = shearRotationDelta * deltaTriRotation * prevCubeRotation;
+                            prevCubeRotation = cube.transform.rotation;
+                            prevCubeLocalRotation = Quaternion.Inverse(wristBone.Transform.rotation) * cube.transform.rotation;
                         }
                         else
                         {
@@ -272,7 +256,7 @@ public class RotationInteractor : MonoBehaviour
                     }
                     else
                     {
-                        cube.transform.rotation = palmBone.Transform.rotation * prevCubeLocalRotation;
+                        cube.transform.rotation = wristBone.Transform.rotation * prevCubeLocalRotation;
                         prevCubeRotation = cube.transform.rotation;
                     }
                 }
