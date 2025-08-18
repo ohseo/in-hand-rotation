@@ -36,7 +36,7 @@ public class RotationInteractor : MonoBehaviour
 
     private List<GameObject> spheres = new List<GameObject>();
     private float sphereScale = 0.01f;
-    private float areaThreshold = 0.0002f;
+    private float areaThreshold = 0.0001f;
 
     private LineRenderer lineRenderer;
 
