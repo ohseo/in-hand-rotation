@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using UnityEngine;
 using TMPro;
 
@@ -33,6 +34,8 @@ public class RotationInteractor : MonoBehaviour
 
     [SerializeField]
     private int scaleMode = 0; // 0: angle, 1: thumb-tip position, 2: cmc
+    [SerializeField]
+    private int transferFunction = 0; // 0: linear, 1: accelerating(power), 2: decelerating(hyperbolic tangent)
 
     private List<GameObject> spheres = new List<GameObject>();
     private float sphereScale = 0.01f;
@@ -44,7 +47,7 @@ public class RotationInteractor : MonoBehaviour
 
     [SerializeField]
     private TextMeshProUGUI textbox;
-    private string uitext;
+    private string uitext = "";
 
     void Awake()
     {
@@ -156,6 +159,18 @@ public class RotationInteractor : MonoBehaviour
             scaleMode = 2;
             uitext = "metacarpal";
         }
+        else if (Input.GetKey(KeyCode.Keypad7))
+        {
+            transferFunction = 0;
+        }
+        else if (Input.GetKey(KeyCode.Keypad8))
+        {
+            transferFunction = 1;
+        }
+        else if (Input.GetKey(KeyCode.Keypad9))
+        {
+            transferFunction = 2;
+        }
         else if (Input.GetKey(KeyCode.KeypadMinus))
         {
             isComponentsVisible = false;
@@ -175,7 +190,8 @@ public class RotationInteractor : MonoBehaviour
             lineRenderer.enabled = true;
         }
 
-        textbox.text = string.Format("{0}, scale factor {1}", uitext, scaleFactor);
+        // textbox.text = string.Format("{0}, scale factor {1}", uitext, scaleFactor);
+        textbox.text = string.Format("{0}, transfer function {1}", uitext, transferFunction);
 
 
         // cube.transform.position = palmBone.Transform.position - palmBone.Transform.up * 0.04f + palmBone.Transform.forward * 0.03f;
@@ -202,7 +218,25 @@ public class RotationInteractor : MonoBehaviour
             Quaternion currCMCRot_wrist = Quaternion.Inverse(currWristRot) * currCMCRot;
             Quaternion deltaRot_wrist = Quaternion.Inverse(origCMCRot_wrist) * currCMCRot_wrist;
             deltaRot_wrist.ToAngleAxis(out float angle, out Vector3 axis);
-            Quaternion scaledRot_wrist = Quaternion.AngleAxis(angle * scaleFactor, axis);
+
+            double angleRadian = angle / 180.0 * Math.PI;
+            float modifiedAngle = 0f;
+            if (transferFunction == 0)
+            {
+                modifiedAngle = angle * scaleFactor;
+            }
+            else if (transferFunction == 1)
+            {
+                modifiedAngle = 3f * (float)Math.Pow(angleRadian, 2.7) * 180f / (float)Math.PI;
+            }
+            else if (transferFunction == 2)
+            {
+                modifiedAngle = 0.55f * (float)Math.Tanh(4d * angleRadian) * 180f / (float)Math.PI;
+                // modifiedAngle = 0.65f * (float)Math.Pow(angleRadian, 0.33) * 180f / (float)Math.PI;
+            }
+
+            Debug.Log(string.Format("transfer function: {0}, angle: {1}, modified angle: {2}", transferFunction, angle, modifiedAngle));
+            Quaternion scaledRot_wrist = Quaternion.AngleAxis(modifiedAngle, axis);
             Quaternion currScaledCMCRot_wrist = origScaledCMCRot_wrist * scaledRot_wrist;
 
             Vector3 currCMCPos_wrist = wristBone.Transform.InverseTransformPoint(thumbMetacarpal.Transform.position);
