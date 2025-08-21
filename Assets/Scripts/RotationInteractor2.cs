@@ -23,7 +23,7 @@ public class RotationInteractor2 : MonoBehaviour
     private List<GameObject> spheres = new List<GameObject>();
     private GameObject thumbSphere, indexSphere, middleSphere;
     private float sphereScale = 0.01f;
-    private float areaThreshold = 0.0001f, magThreshold = 0.00001f, dotThreshold = 0.999f, angleThreshold = 0.001f;
+    private float areaThreshold = 0.0001f, magThreshold = 0.00001f, dotThreshold = 0.999f, angleThreshold = 0.01f;
 
     private LineRenderer lineRenderer;
 
@@ -37,10 +37,10 @@ public class RotationInteractor2 : MonoBehaviour
     private Dictionary<KeyCode, Action> keyActions;
 
     private Quaternion origThumbRotation, origScaledThumbRotation;
-    private Quaternion origTriangleRotation;
-    private Quaternion cubeRotation, origCubeRotation, prevCubeRotation;
     private Quaternion worldWristRotation;
-    private float origAngle;
+    private Quaternion cubeRotation, prevCubeRotation;
+    private Quaternion prevTriangleRotation;
+    private float prevAngle;
 
     [SerializeField]
     private TextMeshProUGUI textbox;
@@ -98,10 +98,9 @@ public class RotationInteractor2 : MonoBehaviour
         worldWristRotation = wristBone.Transform.rotation;
         origThumbRotation = Quaternion.Inverse(worldWristRotation) * thumbMetacarpal.Transform.rotation;
         origScaledThumbRotation = origThumbRotation;
-        origCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
-        origAngle = 0f;
-        origTriangleRotation = Quaternion.identity;
-        prevCubeRotation = origCubeRotation;
+        prevAngle = 0f;
+        prevTriangleRotation = Quaternion.identity;
+        prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
 
         keyActions = new Dictionary<KeyCode, Action>
         {
@@ -130,7 +129,6 @@ public class RotationInteractor2 : MonoBehaviour
         {
             origThumbRotation = Quaternion.Inverse(worldWristRotation) * thumbMetacarpal.Transform.rotation;
             origScaledThumbRotation = origThumbRotation;
-            origCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
         }
 
         foreach (var entry in keyActions)
@@ -164,30 +162,25 @@ public class RotationInteractor2 : MonoBehaviour
         bool isTriangleValid = CalculateTriangleOrientation(thumbPosition, indexPosition, middlePosition, out Quaternion triangleRotation);
         bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
 
-        if (!isAngleValid) angle = origAngle;
-        if (!isTriangleValid) triangleRotation = origTriangleRotation;
-        
         if (isAngleValid && isTriangleValid && isTriangleSmall)
         {
             if (isClutching)
             {
                 if (isReset)
                 {
-                    float angleDifference = angle - origAngle;
+                    float angleDifference = angle - prevAngle;
                     Vector3 triangleAxis = triangleRotation * Vector3.up;
                     Quaternion deltaShearRotation, deltaTriangleRotation;
 
                     deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
-                    deltaTriangleRotation = Quaternion.Inverse(origTriangleRotation) * triangleRotation;
-                    cubeRotation = deltaShearRotation * deltaTriangleRotation * origCubeRotation;
+                    deltaTriangleRotation = Quaternion.Inverse(prevTriangleRotation) * triangleRotation;
+                    cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
                     cube.transform.rotation = worldWristRotation * cubeRotation;
 
                     prevCubeRotation = cubeRotation;
                 }
                 else
                 {
-                    origAngle = angle;
-                    origTriangleRotation = triangleRotation;
                     isReset = true;
                 }
             }
@@ -196,6 +189,8 @@ public class RotationInteractor2 : MonoBehaviour
                 cubeRotation = prevCubeRotation;
                 cube.transform.rotation = worldWristRotation * cubeRotation;
             }
+            prevAngle = angle;
+            prevTriangleRotation = triangleRotation;
         }
     }
 
