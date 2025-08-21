@@ -48,6 +48,8 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI textbox;
     private string uitext = "";
+    private string[] scaleMethodText = { "angle", "cartesian", "metacarpal" };
+    private string[] transferText = {"as-is", "power", "tanh"};
 
     void Awake()
     {
@@ -138,7 +140,8 @@ public class RotationInteractor : MonoBehaviour
 
         if (Input.GetKey(KeyCode.KeypadEnter))
         {
-            scaleFactor = 2.0f;
+            // scaleFactor = 2.0f;
+            cube.transform.rotation = Quaternion.identity;
         }
         else if (Input.GetKey(KeyCode.KeypadPlus))
         {
@@ -147,17 +150,14 @@ public class RotationInteractor : MonoBehaviour
         else if (Input.GetKey(KeyCode.Keypad0))
         {
             scaleMode = 0;
-            uitext = "angle";
         }
         else if (Input.GetKey(KeyCode.Keypad1))
         {
             scaleMode = 1;
-            uitext = "cartesian";
         }
         else if (Input.GetKey(KeyCode.Keypad2))
         {
             scaleMode = 2;
-            uitext = "metacarpal";
         }
         else if (Input.GetKey(KeyCode.Keypad7))
         {
@@ -191,7 +191,8 @@ public class RotationInteractor : MonoBehaviour
         }
 
         // textbox.text = string.Format("{0}, scale factor {1}", uitext, scaleFactor);
-        textbox.text = string.Format("{0}, transfer function {1}", uitext, transferFunction);
+            // textbox.text = string.Format("{0}, transfer function {1}", uitext, transferFunction);
+            textbox.text = scaleMethodText[scaleMode] + ", " + transferText[transferFunction];
 
 
         // cube.transform.position = palmBone.Transform.position - palmBone.Transform.up * 0.04f + palmBone.Transform.forward * 0.03f;
@@ -235,7 +236,7 @@ public class RotationInteractor : MonoBehaviour
                 // modifiedAngle = 0.65f * (float)Math.Pow(angleRadian, 0.33) * 180f / (float)Math.PI;
             }
 
-            Debug.Log(string.Format("transfer function: {0}, angle: {1}, modified angle: {2}", transferFunction, angle, modifiedAngle));
+            // Debug.Log(string.Format("transfer function: {0}, angle: {1}, modified angle: {2}", transferFunction, angle, modifiedAngle));
             Quaternion scaledRot_wrist = Quaternion.AngleAxis(modifiedAngle, axis);
             Quaternion currScaledCMCRot_wrist = origScaledCMCRot_wrist * scaledRot_wrist;
 
