@@ -23,7 +23,8 @@ public class RotationInteractor2 : MonoBehaviour
     private List<GameObject> spheres = new List<GameObject>();
     private GameObject thumbSphere, indexSphere, middleSphere;
     private float sphereScale = 0.01f;
-    private float areaThreshold = 0.0001f, magThreshold = 0.00001f, dotThreshold = 0.999f, angleThreshold = 0.01f;
+    private float areaThreshold = 0.0001f, magThreshold = 0.00001f, dotThreshold = 0.999f;
+    private float thumbAngleThreshold = 0.01f, triAngleThreshold = 30f;
 
     private LineRenderer lineRenderer;
 
@@ -174,9 +175,12 @@ public class RotationInteractor2 : MonoBehaviour
 
                     deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
                     deltaTriangleRotation = Quaternion.Inverse(prevTriangleRotation) * triangleRotation;
-                    cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
-                    cube.transform.rotation = worldWristRotation * cubeRotation;
-
+                    deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
+                    if (deltaAngle < triAngleThreshold)
+                    {
+                        cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
+                        cube.transform.rotation = worldWristRotation * cubeRotation;
+                    }
                     prevCubeRotation = cubeRotation;
                 }
                 else
@@ -220,7 +224,7 @@ public class RotationInteractor2 : MonoBehaviour
         Quaternion deltaThumbRotation = Quaternion.Inverse(origThumbRotation) * thumbRotation;
         deltaThumbRotation.ToAngleAxis(out float angle, out Vector3 axis);
 
-        if (angle < angleThreshold)
+        if (angle < thumbAngleThreshold)
         {
             return thumbTipPosition;
         }
