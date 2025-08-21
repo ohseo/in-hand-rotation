@@ -1478,6 +1478,7 @@ GameObject:
   - component: {fileID: 1494201752}
   - component: {fileID: 1494201753}
   - component: {fileID: 1494201754}
+  - component: {fileID: 1494201755}
   m_Layer: 0
   m_Name: RotationInteractor
   m_TagString: Untagged
@@ -1507,7 +1508,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1494201751}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b1adae878bd25d4a94240adfff304e1, type: 3}
   m_Name: 
@@ -1518,6 +1519,7 @@ MonoBehaviour:
   ovrLeftSkeleton: {fileID: 1218076467}
   cube: {fileID: 78841929}
   scaleMode: 1
+  transferFunction: 0
   textbox: {fileID: 1939140865}
 --- !u!120 &1494201754
 LineRenderer:
@@ -1625,6 +1627,25 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 0
+--- !u!114 &1494201755
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1494201751}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ba43507f98c5e34685120f06d54bad3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isComponentsVisible: 1
+  isLeftHanded: 0
+  ovrRightSkeleton: {fileID: 521333914}
+  ovrLeftSkeleton: {fileID: 1218076467}
+  cube: {fileID: 78841929}
+  transferFunction: 0
+  textbox: {fileID: 1939140865}
 --- !u!1 &1560501833
 GameObject:
   m_ObjectHideFlags: 0
