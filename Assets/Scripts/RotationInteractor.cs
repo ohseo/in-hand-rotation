@@ -5,7 +5,7 @@ using System;
 using UnityEngine;
 using TMPro;
 
-public class RotationInteractor2 : MonoBehaviour
+public class RotationInteractor : MonoBehaviour
 {
     [SerializeField]
     private bool isComponentsVisible = true;
