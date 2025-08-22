@@ -28,7 +28,7 @@ public class RotationInteractor : MonoBehaviour
 
     private LineRenderer lineRenderer;
 
-    private bool isClutching = false, isReset = false;
+    private bool isGrabbed = false, isClutching = false, isReset = false;
 
     [SerializeField]
     private int transferFunction = 0; // 0: linear, 1: accelerating(power), 2: decelerating(hyperbolic tangent)
@@ -42,6 +42,8 @@ public class RotationInteractor : MonoBehaviour
     private Quaternion cubeRotation, prevCubeRotation;
     private Quaternion prevTriangleRotation;
     private float prevAngle;
+    private Vector3 grabOffsetPosition, centroidPosition;
+    private Quaternion grabOffsetRotation;
 
     [SerializeField]
     private TextMeshProUGUI textbox;
@@ -70,6 +72,8 @@ public class RotationInteractor : MonoBehaviour
             {
                 sphere.GetComponent<Renderer>().enabled = false;
             }
+            sphere.GetComponent<Collider>().isTrigger = true;
+            sphere.tag = "TipSphere";
             spheres.Add(sphere);
         }
 
@@ -95,13 +99,15 @@ public class RotationInteractor : MonoBehaviour
         thumbSphere.transform.position = thumbTipBone.Transform.position;
         indexSphere.transform.position = indexTipBone.Transform.position;
         middleSphere.transform.position = middleTipBone.Transform.position;
+        cube.transform.position = new Vector3(0.1f, 1f, 0.3f);
 
         worldWristRotation = wristBone.Transform.rotation;
         origThumbRotation = Quaternion.Inverse(worldWristRotation) * thumbMetacarpal.Transform.rotation;
         origScaledThumbRotation = origThumbRotation;
         prevAngle = 0f;
         prevTriangleRotation = Quaternion.identity;
-        prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
+        // prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
+        prevCubeRotation = Quaternion.identity;
 
         keyActions = new Dictionary<KeyCode, Action>
         {
@@ -141,7 +147,7 @@ public class RotationInteractor : MonoBehaviour
         }
 
         textbox.text = transferText[transferFunction] + string.Format(", scale factor {0}", scaleFactor);
-        
+
         Vector3 thumbPosition = TransferBoneMovement();
         Vector3 indexPosition = wristBone.Transform.InverseTransformPoint(indexTipBone.Transform.position);
         Vector3 middlePosition = wristBone.Transform.InverseTransformPoint(middleTipBone.Transform.position);
@@ -156,32 +162,34 @@ public class RotationInteractor : MonoBehaviour
         lineRenderer.SetPosition(2, middleTipBone.Transform.position);
         lineRenderer.SetPosition(3, worldThumbPosition);
 
-        // position cube with bones since spheres are modified
-        cube.transform.position = GetTriangleCentroid(indexTipBone.Transform.position, middleTipBone.Transform.position, thumbTipBone.Transform.position);
-
         bool isAngleValid = CalculateAngleAtVertex(thumbPosition, indexPosition, middlePosition, out float angle);
         bool isTriangleValid = CalculateTriangleOrientation(thumbPosition, indexPosition, middlePosition, out Quaternion triangleRotation);
         bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
+        // position cube with bones since spheres are modified
+        centroidPosition = GetTriangleCentroid(indexTipBone.Transform.position, middleTipBone.Transform.position, thumbTipBone.Transform.position);
 
-        if (isAngleValid && isTriangleValid && isTriangleSmall)
+        if (isGrabbed)
         {
             if (isClutching)
             {
                 if (isReset)
                 {
-                    float angleDifference = angle - prevAngle;
-                    Vector3 triangleAxis = triangleRotation * Vector3.up;
-                    Quaternion deltaShearRotation, deltaTriangleRotation;
-
-                    deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
-                    deltaTriangleRotation = Quaternion.Inverse(prevTriangleRotation) * triangleRotation;
-                    deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
-                    if (deltaAngle < triAngleThreshold)
+                    if (isAngleValid && isTriangleValid && isTriangleSmall)
                     {
-                        cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
-                        cube.transform.rotation = worldWristRotation * cubeRotation;
+                        float angleDifference = angle - prevAngle;
+                        Vector3 triangleAxis = triangleRotation * Vector3.up;
+                        Quaternion deltaShearRotation, deltaTriangleRotation;
+
+                        deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
+                        deltaTriangleRotation = Quaternion.Inverse(prevTriangleRotation) * triangleRotation;
+                        deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
+                        if (deltaAngle < triAngleThreshold)
+                        {
+                            cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
+                            cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
+                        }
+                        prevCubeRotation = cubeRotation;
                     }
-                    prevCubeRotation = cubeRotation;
                 }
                 else
                 {
@@ -191,8 +199,13 @@ public class RotationInteractor : MonoBehaviour
             else
             {
                 cubeRotation = prevCubeRotation;
-                cube.transform.rotation = worldWristRotation * cubeRotation;
+                cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
             }
+            cube.transform.position = grabOffsetPosition + centroidPosition;
+        }
+
+        if (isAngleValid && isTriangleValid && isTriangleSmall)
+        {
             prevAngle = angle;
             prevTriangleRotation = triangleRotation;
         }
@@ -320,5 +333,27 @@ public class RotationInteractor : MonoBehaviour
 
         orientation = Quaternion.LookRotation(forward, normal);
         return true;
+    }
+
+    public bool getIsGrabbed()
+    {
+        return isGrabbed;
+    }
+
+    public void setIsGrabbed(bool b)
+    {
+        isGrabbed = b;
+
+        if (isGrabbed)
+        {
+            grabOffsetPosition = cube.transform.position - centroidPosition;
+            grabOffsetRotation = Quaternion.Inverse(wristBone.Transform.rotation) * cube.transform.rotation;
+            prevCubeRotation = Quaternion.identity;
+        }
+        else
+        {
+            grabOffsetPosition = Vector3.zero;
+            grabOffsetRotation = Quaternion.identity;
+        }
     }
 }
