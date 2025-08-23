@@ -12,6 +12,8 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private bool isLeftHanded = false;
     [SerializeField]
+    private bool isShearFactorOn = true;
+    [SerializeField]
     private OVRSkeleton ovrRightSkeleton, ovrLeftSkeleton;
     private OVRSkeleton ovrSkeleton;
     private OVRBone indexTipBone, middleTipBone, thumbTipBone, thumbMetacarpal, wristBone;
@@ -40,10 +42,11 @@ public class RotationInteractor : MonoBehaviour
     private Quaternion origThumbRotation, origScaledThumbRotation;
     private Quaternion worldWristRotation;
     private Quaternion cubeRotation, prevCubeRotation;
-    private Quaternion prevTriangleRotation;
+    private Quaternion prevTriangleRotation, triangleRotation;
     private float prevAngle;
     private Vector3 grabOffsetPosition, centroidPosition;
     private Quaternion grabOffsetRotation;
+    Vector3 triangleForward, triangleUp;
 
     [SerializeField]
     private TextMeshProUGUI textbox;
@@ -133,7 +136,9 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.Q, () => thumbWeight = 1f},
             {KeyCode.W, () => thumbWeight = 2f},
             {KeyCode.E, () => thumbWeight = 3f},
-            {KeyCode.R, () => thumbWeight = 4f}
+            {KeyCode.R, () => thumbWeight = 4f},
+            {KeyCode.S, () => isShearFactorOn = true},
+            {KeyCode.D, () => isShearFactorOn = false}
         };
 
         // CenterCalculation = GetTriangleCentroid;
@@ -179,7 +184,7 @@ public class RotationInteractor : MonoBehaviour
         lineRenderer.SetPosition(3, worldThumbPosition);
 
         bool isAngleValid = CalculateAngleAtVertex(thumbPosition, indexPosition, middlePosition, out float angle);
-        bool isTriangleValid = CalculateTriangleOrientation(thumbPosition, indexPosition, middlePosition, out Quaternion triangleRotation);
+        bool isTriangleValid = CalculateTriangleOrientation(thumbPosition, indexPosition, middlePosition, out triangleRotation);
         bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
         // position cube with bones since spheres are modified
         // centroidPosition = GetTriangleCentroid(indexTipBone.Transform.position, middleTipBone.Transform.position, thumbTipBone.Transform.position);
@@ -197,8 +202,8 @@ public class RotationInteractor : MonoBehaviour
                     float angleDifference = angle - prevAngle;
                     Vector3 triangleAxis = triangleRotation * Vector3.up;
                     Quaternion deltaShearRotation, deltaTriangleRotation;
-                    deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
-                    // deltaTriangleRotation = Quaternion.Inverse(prevTriangleRotation) * triangleRotation;
+                    if (isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
+                    else deltaShearRotation = Quaternion.identity;
                     deltaTriangleRotation = triangleRotation * Quaternion.Inverse(prevTriangleRotation);
                     deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
                     if (deltaAngle < triAngleThreshold)
@@ -420,6 +425,8 @@ public class RotationInteractor : MonoBehaviour
     {
         Vector3 forward = (point2 - point1).normalized;
         Vector3 roughUp = (point3 - point1).normalized;
+        triangleForward = forward;
+        triangleUp = roughUp;
 
         if (forward.magnitude < magThreshold || roughUp.magnitude < magThreshold || Vector3.Dot(forward, roughUp) > dotThreshold || Vector3.Dot(forward, roughUp) < -dotThreshold)
         {
@@ -439,12 +446,12 @@ public class RotationInteractor : MonoBehaviour
         return true;
     }
 
-    public bool getIsGrabbed()
+    public bool GetIsGrabbed()
     {
         return isGrabbed;
     }
 
-    public void setIsGrabbed(bool b)
+    public void SetIsGrabbed(bool b)
     {
         isGrabbed = b;
 
@@ -459,5 +466,17 @@ public class RotationInteractor : MonoBehaviour
             grabOffsetPosition = Vector3.zero;
             grabOffsetRotation = Quaternion.identity;
         }
+    }
+
+    public void GetTriangleTransform(out Vector3 pos, out Quaternion rot)
+    {
+        pos = centroidPosition;
+        rot = worldWristRotation * triangleRotation;
+    }
+
+    public void GetTriangleTransformRaw(out Vector3 forward, out Vector3 roughUp)
+    {
+        forward = triangleForward;
+        roughUp = triangleUp;
     }
 }

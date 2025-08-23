@@ -30,11 +30,11 @@ public class DieCollisionHandler : MonoBehaviour
         {                                                                                                                                                                                                                                                          
             spheresInContact++;
 
-            if (!_rotationInteractor.getIsGrabbed())
+            if (!_rotationInteractor.GetIsGrabbed())
             {
                 if (spheresInContact > 2)
                 {
-                    _rotationInteractor.setIsGrabbed(true);
+                    _rotationInteractor.SetIsGrabbed(true);
                 }
             }
         }
@@ -50,11 +50,11 @@ public class DieCollisionHandler : MonoBehaviour
         {
             spheresInContact--;
 
-            if (_rotationInteractor.getIsGrabbed())
+            if (_rotationInteractor.GetIsGrabbed())
             {
                 if (spheresInContact < 2)
                 {
-                    _rotationInteractor.setIsGrabbed(false);
+                    _rotationInteractor.SetIsGrabbed(false);
                 }
             }
         }
