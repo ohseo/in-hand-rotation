@@ -20,7 +20,7 @@ public class RotationInteractor : MonoBehaviour
 
     [SerializeField]
     private GameObject cube;
-    private float cubeScale = 0.06f;
+    private float cubeScale = 0.04f;
 
     private List<GameObject> spheres = new List<GameObject>();
     private GameObject thumbSphere, indexSphere, middleSphere;
