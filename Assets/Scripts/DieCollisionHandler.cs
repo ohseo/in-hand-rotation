@@ -27,7 +27,7 @@ public class DieCollisionHandler : MonoBehaviour
             //
         }
         else if (other.CompareTag("TipSphere"))
-        {
+        {                                                                                                                                                                                                                                                          
             spheresInContact++;
 
             if (!_rotationInteractor.getIsGrabbed())

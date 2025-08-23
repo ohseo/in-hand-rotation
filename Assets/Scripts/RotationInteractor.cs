@@ -18,7 +18,7 @@ public class RotationInteractor : MonoBehaviour
 
     [SerializeField]
     private GameObject cube;
-    private float cubeScale = 0.03f;
+    private float cubeScale = 0.06f;
 
     private List<GameObject> spheres = new List<GameObject>();
     private GameObject thumbSphere, indexSphere, middleSphere;
@@ -28,7 +28,7 @@ public class RotationInteractor : MonoBehaviour
 
     private LineRenderer lineRenderer;
 
-    private bool isGrabbed = false, isClutching = false, isReset = false;
+    private bool isGrabbed = true, isClutching = false, isReset = false;
 
     [SerializeField]
     private int transferFunction = 0; // 0: linear, 1: accelerating(power), 2: decelerating(hyperbolic tangent)
@@ -48,6 +48,10 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI textbox;
     private string[] transferText = { "linear", "power", "tanh" };
+
+    public delegate Vector3 GetTriangleCenter(Vector3 p1, Vector3 p2, Vector3 p3);
+    private GetTriangleCenter CenterCalculation;
+    private float thumbWeight = 1f; // 2*2
 
     void Awake()
     {
@@ -108,6 +112,8 @@ public class RotationInteractor : MonoBehaviour
         prevTriangleRotation = Quaternion.identity;
         // prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
         prevCubeRotation = Quaternion.identity;
+        grabOffsetPosition = Vector3.zero;
+        grabOffsetRotation = Quaternion.identity;
 
         keyActions = new Dictionary<KeyCode, Action>
         {
@@ -119,8 +125,18 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.Keypad8, () => transferFunction = 1},
             {KeyCode.Keypad9, () => transferFunction = 2},
             {KeyCode.Keypad1, () => scaleFactor = 1f},
-            {KeyCode.Keypad2, () => scaleFactor = 2f}
+            {KeyCode.Keypad2, () => scaleFactor = 2f},
+            // {KeyCode.Q, () => CenterCalculation = GetTriangleCentroid},
+            // {KeyCode.W, () => CenterCalculation = GetTriangleIncenter},
+            // {KeyCode.E, () => CenterCalculation = GetTriangleCircumcenter},
+            // {KeyCode.R, () => CenterCalculation = GetTriangleOrthocenter}
+            {KeyCode.Q, () => thumbWeight = 1f},
+            {KeyCode.W, () => thumbWeight = 2f},
+            {KeyCode.E, () => thumbWeight = 3f},
+            {KeyCode.R, () => thumbWeight = 4f}
         };
+
+        // CenterCalculation = GetTriangleCentroid;
     }
 
     // Update is called once per frame
@@ -166,10 +182,12 @@ public class RotationInteractor : MonoBehaviour
         bool isTriangleValid = CalculateTriangleOrientation(thumbPosition, indexPosition, middlePosition, out Quaternion triangleRotation);
         bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
         // position cube with bones since spheres are modified
-        centroidPosition = GetTriangleCentroid(indexTipBone.Transform.position, middleTipBone.Transform.position, thumbTipBone.Transform.position);
+        // centroidPosition = GetTriangleCentroid(indexTipBone.Transform.position, middleTipBone.Transform.position, thumbTipBone.Transform.position);
+        // centroidPosition = CenterCalculation.Invoke(thumbTipBone.Transform.position,indexTipBone.Transform.position, middleTipBone.Transform.position);
+        centroidPosition = GetWeightedTriangleCentroid(thumbTipBone.Transform.position, indexTipBone.Transform.position, middleTipBone.Transform.position, thumbWeight);
 
-        if (isGrabbed)
-        {
+        // if (isGrabbed)
+        // {
             if (isClutching)
             {
                 if (isReset)
@@ -202,7 +220,7 @@ public class RotationInteractor : MonoBehaviour
                 cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
             }
             cube.transform.position = grabOffsetPosition + centroidPosition;
-        }
+        // }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
         {
@@ -272,11 +290,97 @@ public class RotationInteractor : MonoBehaviour
 
     public Vector3 GetTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3)
     {
-        float centerX = (p1.x + p2.x + p3.x) / 3f;
-        float centerY = (p1.y + p2.y + p3.y) / 3f;
-        float centerZ = (p1.z + p2.z + p3.z) / 3f;
+        // float centerX = (p1.x + p2.x + p3.x) / 3f;
+        // float centerY = (p1.y + p2.y + p3.y) / 3f;
+        // float centerZ = (p1.z + p2.z + p3.z) / 3f;
 
-        return new Vector3(centerX, centerY, centerZ);
+        // return new Vector3(centerX, centerY, centerZ);
+        return (p1 + p2 + p3) / 3f;
+    }
+
+    public Vector3 GetWeightedTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3, float w)
+    {
+        // float centerX = (p1.x + p2.x + p3.x) / 3f;
+        // float centerY = (p1.y + p2.y + p3.y) / 3f;
+        // float centerZ = (p1.z + p2.z + p3.z) / 3f;
+
+        // return new Vector3(centerX, centerY, centerZ);
+        // return (p1 + p2 + p3) / 3f;
+        return (w * p1 + p2 + p3) / (w + 1f + 1f);
+    }
+
+    public Vector3 GetTriangleIncenter(Vector3 a, Vector3 b, Vector3 c)
+    {
+        // Get the lengths of the sides opposite each vertex.
+        // Side 'a' is opposite vertex A, so its length is the distance from B to C.
+        float sideA = Vector3.Distance(b, c);
+        float sideB = Vector3.Distance(a, c);
+        float sideC = Vector3.Distance(a, b);
+
+        // Calculate the incenter using the formula.
+        Vector3 incenter = (sideA * a + sideB * b + sideC * c) / (sideA + sideB + sideC);
+        return incenter;
+    }
+    public Vector3 GetTriangleCircumcenter(Vector3 v1, Vector3 v2, Vector3 v3)
+    {
+        Vector3 a = v2 - v1;
+        Vector3 b = v3 - v1;
+
+        // Calculate the cross product, which is twice the signed area of the triangle.
+        // It's also normal to the triangle plane.
+        Vector3 cross = Vector3.Cross(a, b);
+        float crossMagnitudeSquared = cross.sqrMagnitude;
+
+        if (crossMagnitudeSquared < 1e-6f)
+        {
+            // The vertices are collinear. The circumcenter is not uniquely defined.
+            // Returning the centroid as a safe fallback.
+            return (v1 + v2 + v3) / 3.0f;
+        }
+
+        // The formula for the circumcenter:
+        Vector3 circumcenter = v1 + (b.sqrMagnitude * Vector3.Cross(cross, a) + a.sqrMagnitude * Vector3.Cross(b, cross)) / (2.0f * crossMagnitudeSquared);
+
+        return circumcenter;
+    }
+
+    public Vector3 GetTriangleOrthocenter(Vector3 a, Vector3 b, Vector3 c)
+    {
+        // The orthocenter, centroid, and circumcenter of a triangle are collinear.
+        // This is known as the Euler Line. We can use this property for a simple calculation.
+        // H (Orthocenter) = G (Centroid) + 2 * (G - C (Circumcenter))
+        // Simplified: H = 3 * G - 2 * C
+
+        Vector3 centroid = GetTriangleCentroid(a, b, c);
+        Vector3 circumcenter = GetTriangleCircumcenter(a, b, c);
+
+        // A direct calculation of the orthocenter.
+        // This is a simplified approach, which works well for a non-degenerate triangle.
+        Vector3 ab = b - a;
+        Vector3 ac = c - a;
+        Vector3 bc = c - b;
+
+        // Use the dot product property: (H - a) . bc = 0
+        // (H - b) . ac = 0
+        // (H - c) . ab = 0
+
+        float D = 2 * (ab.x * ac.y - ab.y * ac.x);
+
+        // Check for near-zero denominator (collinear vertices)
+        if (Mathf.Abs(D) < 1e-6f)
+        {
+            // Fallback for collinear case.
+            return (a + b + c) / 3.0f;
+        }
+
+        float Hx = (ac.y * (ab.sqrMagnitude) - ab.y * (ac.sqrMagnitude)) / D;
+        float Hy = (ab.x * (ac.sqrMagnitude) - ac.x * (ab.sqrMagnitude)) / D;
+
+        Vector3 orthocenter = new Vector3(Hx, Hy, 0.0f) + a;
+
+        // The Euler Line method is more robust and cleaner for 3D.
+        // H = 3G - 2C
+        return 3.0f * centroid - 2.0f * circumcenter;
     }
 
     public bool CalculateTriangleArea(Vector3 p1, Vector3 p2, Vector3 p3, out float area)
