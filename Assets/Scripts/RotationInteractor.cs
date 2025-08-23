@@ -257,7 +257,7 @@ public class RotationInteractor : MonoBehaviour
         Vector3 thumbPosition = wristBone.Transform.InverseTransformPoint(thumbMetacarpal.Transform.position);
         Vector3 thumbTipPosition = wristBone.Transform.InverseTransformPoint(thumbTipBone.Transform.position);
         Quaternion thumbRotation = Quaternion.Inverse(worldWristRotation) * worldThumbRotation;
-        Quaternion deltaThumbRotation = Quaternion.Inverse(origThumbRotation) * thumbRotation;
+        Quaternion deltaThumbRotation = thumbRotation * Quaternion.Inverse(origThumbRotation);
         deltaThumbRotation.ToAngleAxis(out float angle, out Vector3 axis);
 
         if (angle < thumbAngleThreshold)
@@ -282,7 +282,7 @@ public class RotationInteractor : MonoBehaviour
         }
 
         Quaternion scaledDeltaRotation = Quaternion.AngleAxis(modifiedAngle, axis);
-        Quaternion scaledThumbRotation = origScaledThumbRotation * scaledDeltaRotation;
+        Quaternion scaledThumbRotation = scaledDeltaRotation * origScaledThumbRotation;
 
         Vector3 localTipPosition = thumbMetacarpal.Transform.InverseTransformPoint(thumbTipBone.Transform.position); // local based on thumb metacarpal
         Vector3 scaledTipPosition = thumbPosition + scaledThumbRotation * localTipPosition;
