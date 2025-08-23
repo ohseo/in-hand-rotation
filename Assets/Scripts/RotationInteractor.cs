@@ -188,38 +188,38 @@ public class RotationInteractor : MonoBehaviour
 
         // if (isGrabbed)
         // {
-            if (isClutching)
+        if (isClutching)
+        {
+            if (isReset)
             {
-                if (isReset)
+                if (isAngleValid && isTriangleValid && isTriangleSmall)
                 {
-                    if (isAngleValid && isTriangleValid && isTriangleSmall)
+                    float angleDifference = angle - prevAngle;
+                    Vector3 triangleAxis = triangleRotation * Vector3.up;
+                    Quaternion deltaShearRotation, deltaTriangleRotation;
+                    deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
+                    // deltaTriangleRotation = Quaternion.Inverse(prevTriangleRotation) * triangleRotation;
+                    deltaTriangleRotation = triangleRotation * Quaternion.Inverse(prevTriangleRotation);
+                    deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
+                    if (deltaAngle < triAngleThreshold)
                     {
-                        float angleDifference = angle - prevAngle;
-                        Vector3 triangleAxis = triangleRotation * Vector3.up;
-                        Quaternion deltaShearRotation, deltaTriangleRotation;
-
-                        deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
-                        deltaTriangleRotation = Quaternion.Inverse(prevTriangleRotation) * triangleRotation;
-                        deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
-                        if (deltaAngle < triAngleThreshold)
-                        {
-                            cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
-                            cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
-                        }
-                        prevCubeRotation = cubeRotation;
+                        cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
+                        cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
                     }
-                }
-                else
-                {
-                    isReset = true;
+                    prevCubeRotation = cubeRotation;
                 }
             }
             else
             {
-                cubeRotation = prevCubeRotation;
-                cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
+                isReset = true;
             }
-            cube.transform.position = grabOffsetPosition + centroidPosition;
+        }
+        else
+        {
+            cubeRotation = prevCubeRotation;
+            cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
+        }
+        cube.transform.position = grabOffsetPosition + centroidPosition;
         // }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
