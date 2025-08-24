@@ -33,6 +33,8 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private int _transferFunction = 0; // 0: linear, 1: accelerating(power), 2: decelerating(hyperbolic tangent)
     private float _scaleFactor = 1f;
+    // private float _powFactorA = 0.955f, _tanhFactorA = 1.094f;
+    // private double _powFactorB = 2d, _tanhFactorB = 1.829d;
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private Dictionary<KeyCode, Action> _keyActions;
@@ -53,7 +55,7 @@ public class RotationInteractor : MonoBehaviour
 
     public delegate Vector3 GetTriangleCenter(Vector3 p1, Vector3 p2, Vector3 p3);
     private GetTriangleCenter _CenterCalculation;
-    private float _thumbWeight = 2f; // 2*2
+    private float _thumbWeight = 1.41f; // 2*2
     private float _fingerWeight = 1f;
 
     void Awake()
@@ -154,7 +156,8 @@ public class RotationInteractor : MonoBehaviour
         Vector3 middlePosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
         Vector3 worldThumbPosition = _wristBone.Transform.TransformPoint(thumbPosition);
 
-        _thumbSphere.transform.position = worldThumbPosition;
+        // _thumbSphere.transform.position = worldThumbPosition;
+        _thumbSphere.transform.position = _thumbTipBone.Transform.position;
         _indexSphere.transform.position = _indexTipBone.Transform.position;
         _middleSphere.transform.position = _middleTipBone.Transform.position;
 

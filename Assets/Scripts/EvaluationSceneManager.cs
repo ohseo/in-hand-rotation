@@ -9,12 +9,12 @@ public class EvaluationSceneManager : MonoBehaviour
     [SerializeField]
     private GameObject _diePrefab, _targetPrefab;
     private GameObject _die, _target;
-    private float _cubeScale = 0.03f;
+    private float _cubeScale = 0.04f;
     private float _initRotationDeg = 120f;
     private Vector3 _initPosition = new Vector3(0.1f, 1f, 0.25f);
     private Vector3 _posError;
     private Quaternion _rotError;
-    private float _posThreshold = 0.0025f, _rotThresholdDeg = 2.5f;
+    private float _posThreshold = 0.002f, _rotThresholdDeg = 5f;
     private bool _isTaskComplete = false;
     [SerializeField]
     private int _transferFunction;
