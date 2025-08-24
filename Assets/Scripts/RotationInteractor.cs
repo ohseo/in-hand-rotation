@@ -20,7 +20,7 @@ public class RotationInteractor : MonoBehaviour
 
     [SerializeField]
     private GameObject cube;
-    private float cubeScale = 0.04f;
+    private float cubeScale = 0.03f;
 
     private List<GameObject> spheres = new List<GameObject>();
     private GameObject thumbSphere, indexSphere, middleSphere;
@@ -30,13 +30,13 @@ public class RotationInteractor : MonoBehaviour
 
     private LineRenderer lineRenderer;
 
-    private bool isGrabbed = true, isClutching = false, isReset = false;
+    private bool isGrabbed = false, isClutching = false, isReset = false;
 
     [SerializeField]
     private int transferFunction = 0; // 0: linear, 1: accelerating(power), 2: decelerating(hyperbolic tangent)
     private float scaleFactor = 1f;
-    private float powFactorA = 3f, tanhFactorA = 0.55f;
-    private double powFactorB = 2.7, tanhFactorB = 4d;
+    private float powFactorA = 1.910f, tanhFactorA = 0.547f;
+    private double powFactorB = 2d, tanhFactorB = 3.657d;
     private Dictionary<KeyCode, Action> keyActions;
 
     private Quaternion origThumbRotation, origScaledThumbRotation;
@@ -54,7 +54,8 @@ public class RotationInteractor : MonoBehaviour
 
     public delegate Vector3 GetTriangleCenter(Vector3 p1, Vector3 p2, Vector3 p3);
     private GetTriangleCenter CenterCalculation;
-    private float thumbWeight = 1f; // 2*2
+    private float thumbWeight = 2f; // 2*2
+    private float fingerWeight = 1f;
 
     void Awake()
     {
@@ -129,19 +130,19 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.Keypad9, () => transferFunction = 2},
             {KeyCode.Keypad1, () => scaleFactor = 1f},
             {KeyCode.Keypad2, () => scaleFactor = 2f},
-            // {KeyCode.Q, () => CenterCalculation = GetTriangleCentroid},
-            // {KeyCode.W, () => CenterCalculation = GetTriangleIncenter},
-            // {KeyCode.E, () => CenterCalculation = GetTriangleCircumcenter},
-            // {KeyCode.R, () => CenterCalculation = GetTriangleOrthocenter}
-            {KeyCode.Q, () => thumbWeight = 1f},
-            {KeyCode.W, () => thumbWeight = 2f},
-            {KeyCode.E, () => thumbWeight = 3f},
-            {KeyCode.R, () => thumbWeight = 4f},
+            {KeyCode.Q, () => CenterCalculation = GetWeightedTriangleCentroid},
+            {KeyCode.W, () => CenterCalculation = GetTriangleIncenter},
+            {KeyCode.E, () => CenterCalculation = GetTriangleCircumcenter},
+            {KeyCode.R, () => CenterCalculation = GetTriangleOrthocenter},
+            // {KeyCode.Q, () => thumbWeight = 1f},
+            // {KeyCode.W, () => thumbWeight = 2f},
+            // {KeyCode.E, () => thumbWeight = 3f},
+            // {KeyCode.R, () => thumbWeight = 4f},
             {KeyCode.S, () => isShearFactorOn = true},
             {KeyCode.D, () => isShearFactorOn = false}
         };
 
-        // CenterCalculation = GetTriangleCentroid;
+        CenterCalculation = GetWeightedTriangleCentroid;
     }
 
     // Update is called once per frame
@@ -188,50 +189,51 @@ public class RotationInteractor : MonoBehaviour
         bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
         // position cube with bones since spheres are modified
         // centroidPosition = GetTriangleCentroid(indexTipBone.Transform.position, middleTipBone.Transform.position, thumbTipBone.Transform.position);
-        // centroidPosition = CenterCalculation.Invoke(thumbTipBone.Transform.position,indexTipBone.Transform.position, middleTipBone.Transform.position);
-        centroidPosition = GetWeightedTriangleCentroid(thumbTipBone.Transform.position, indexTipBone.Transform.position, middleTipBone.Transform.position, thumbWeight);
+        centroidPosition = CenterCalculation.Invoke(thumbTipBone.Transform.position,indexTipBone.Transform.position, middleTipBone.Transform.position);
+        // centroidPosition = GetWeightedTriangleCentroid(thumbTipBone.Transform.position, indexTipBone.Transform.position, middleTipBone.Transform.position, fingerWeight);
 
-        // if (isGrabbed)
-        // {
-        if (isClutching)
+        if (isGrabbed)
         {
-            if (isReset)
+            if (isClutching)
             {
-                if (isAngleValid && isTriangleValid && isTriangleSmall)
+                if (isReset)
                 {
-                    float angleDifference = angle - prevAngle;
-                    Vector3 triangleAxis = triangleRotation * Vector3.up;
-                    Quaternion deltaShearRotation, deltaTriangleRotation;
-                    if (isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
-                    else deltaShearRotation = Quaternion.identity;
-                    deltaTriangleRotation = triangleRotation * Quaternion.Inverse(prevTriangleRotation);
-                    deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
-                    if (deltaAngle < triAngleThreshold)
+                    if (isAngleValid && isTriangleValid && isTriangleSmall)
                     {
-                        cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
-                        cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
+                        float angleDifference = angle - prevAngle;
+                        Vector3 triangleAxis = triangleRotation * Vector3.up;
+                        Quaternion deltaShearRotation, deltaTriangleRotation;
+                        if (isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
+                        else deltaShearRotation = Quaternion.identity;
+                        deltaTriangleRotation = triangleRotation * Quaternion.Inverse(prevTriangleRotation);
+                        deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
+                        if (deltaAngle < triAngleThreshold)
+                        {
+                            cubeRotation = deltaShearRotation * deltaTriangleRotation * prevCubeRotation;
+                            cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
+                        }
+                        prevCubeRotation = cubeRotation;
                     }
-                    prevCubeRotation = cubeRotation;
+                }
+                else
+                {
+                    isReset = true;
                 }
             }
             else
             {
-                isReset = true;
+                cubeRotation = prevCubeRotation;
+                cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
             }
+            cube.transform.position = grabOffsetPosition + centroidPosition;
         }
-        else
-        {
-            cubeRotation = prevCubeRotation;
-            cube.transform.rotation = worldWristRotation * cubeRotation * grabOffsetRotation;
-        }
-        cube.transform.position = grabOffsetPosition + centroidPosition;
-        // }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
         {
             prevAngle = angle;
             prevTriangleRotation = triangleRotation;
         }
+        
     }
 
     private void ToggleComponentsVisibility(bool b)
@@ -303,7 +305,8 @@ public class RotationInteractor : MonoBehaviour
         return (p1 + p2 + p3) / 3f;
     }
 
-    public Vector3 GetWeightedTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3, float w)
+    // public Vector3 GetWeightedTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3, float w)
+    public Vector3 GetWeightedTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3)
     {
         // float centerX = (p1.x + p2.x + p3.x) / 3f;
         // float centerY = (p1.y + p2.y + p3.y) / 3f;
@@ -311,7 +314,8 @@ public class RotationInteractor : MonoBehaviour
 
         // return new Vector3(centerX, centerY, centerZ);
         // return (p1 + p2 + p3) / 3f;
-        return (w * p1 + p2 + p3) / (w + 1f + 1f);
+        return (thumbWeight * p1 + p2 + p3) / (thumbWeight + 1f + 1f);
+        // return (p1 + w * p2 + w * p3) / (1f + w + w);
     }
 
     public Vector3 GetTriangleIncenter(Vector3 a, Vector3 b, Vector3 c)
