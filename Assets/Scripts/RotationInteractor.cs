@@ -53,7 +53,7 @@ public class RotationInteractor : MonoBehaviour
 
     public delegate Vector3 GetTriangleCenter(Vector3 p1, Vector3 p2, Vector3 p3);
     private GetTriangleCenter _CenterCalculation;
-    private float _thumbWeight = 1f; // 2*2
+    private float _thumbWeight = 2f; // 2*2
     private float _fingerWeight = 1f;
 
     void Awake()
@@ -196,6 +196,10 @@ public class RotationInteractor : MonoBehaviour
                 }
                 else
                 {
+                    _grabOffsetPosition = _cube.transform.position - _centroidPosition;
+                    _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
+                    _prevCubeRotation = Quaternion.identity;
+                    _cubeRotation = Quaternion.identity;
                     _isReset = true;
                 }
             }
@@ -206,6 +210,7 @@ public class RotationInteractor : MonoBehaviour
             }
             // _cube.transform.position = rotatedOffset + _centroidPosition;
             _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
+            // _cube.transform.position = _grabOffsetPosition + _centroidPosition;
         }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)

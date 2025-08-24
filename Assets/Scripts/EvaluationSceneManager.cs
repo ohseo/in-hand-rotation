@@ -14,7 +14,7 @@ public class EvaluationSceneManager : MonoBehaviour
     private Vector3 _initPosition = new Vector3(0.1f, 1f, 0.25f);
     private Vector3 _posError;
     private Quaternion _rotError;
-    private float _posThreshold = 0.002f, _rotThresholdDeg = 3f;
+    private float _posThreshold = 0.0025f, _rotThresholdDeg = 2.5f;
     private bool _isTaskComplete = false;
     [SerializeField]
     private int _transferFunction;
@@ -74,7 +74,7 @@ public class EvaluationSceneManager : MonoBehaviour
         deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
         float pError = deltaPos.magnitude;
         deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
-        Debug.Log(string.Format("Error: {0}, {1}",pError, rError));
+        // Debug.Log(string.Format("Error: {0}, {1}",pError, rError));
         return (pError < _posThreshold) && ((rError < _rotThresholdDeg) || (rError > 360f - _rotThresholdDeg));
     }
 
@@ -83,6 +83,7 @@ public class EvaluationSceneManager : MonoBehaviour
         _die = Instantiate(_diePrefab);
         _die.transform.position = new Vector3(-_initPosition.x, _initPosition.y, _initPosition.z);
         _die.transform.localScale = new Vector3(_cubeScale, _cubeScale, _cubeScale);
+        _die.transform.rotation = Quaternion.identity;
     }
 
     private void DestroyDie()
@@ -94,6 +95,7 @@ public class EvaluationSceneManager : MonoBehaviour
     {
         _die.transform.position = new Vector3(-_initPosition.x, _initPosition.y, _initPosition.z);
         _die.transform.localScale = new Vector3(_cubeScale, _cubeScale, _cubeScale);
+        _die.transform.rotation = Quaternion.identity;
     }
 
     private void GenerateTarget()
