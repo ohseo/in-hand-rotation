@@ -11,11 +11,18 @@ public class EvaluationSceneManager : MonoBehaviour
     private GameObject _die, _target;
     private float _cubeScale = 0.03f;
     private float _initRotationDeg = 120f;
-    private Vector3 _initPosition = new Vector3(0.1f, 1f, 0.3f);
+    private Vector3 _initPosition = new Vector3(0.1f, 1f, 0.25f);
     private Vector3 _posError;
     private Quaternion _rotError;
-    private float _posThreshold = 0.005f, _rotThresholdDeg = 5f;
+    private float _posThreshold = 0.002f, _rotThresholdDeg = 3f;
     private bool _isTaskComplete = false;
+    [SerializeField]
+    private int _transferFunction;
+    private int _trialNum;
+    private float _dwellThreshold = 1f;
+    private float _dwellTime;
+    private bool _isDwelling = false;
+    
 
     void Awake()
     {
@@ -39,14 +46,25 @@ public class EvaluationSceneManager : MonoBehaviour
             GenerateTarget();
         }
 
-        _isTaskComplete = CalculateError(out _posError, out _rotError);
-        _rotationInteractor.IsTaskComplete = _isTaskComplete;
-        if (_isTaskComplete)
+        bool b = CalculateError(out _posError, out _rotError);
+        if (b != _isTaskComplete)
         {
-            ResetDie();
-            DestroyTarget();
-            GenerateTarget();
-            _rotationInteractor.Reset();
+            if (b) { _dwellTime = 0f; _isDwelling = true; }
+            else { _isDwelling = false; }
+        }
+        _isTaskComplete = b;
+        _rotationInteractor.IsTaskComplete = _isTaskComplete;
+        if (_isDwelling)
+        {
+            _dwellTime += Time.deltaTime;
+            if (_dwellTime > _dwellThreshold)
+            {
+                ResetDie();
+                DestroyTarget();
+                GenerateTarget();
+                _rotationInteractor.Reset();
+                _isDwelling = false;
+            }
         }
     }
 
@@ -56,7 +74,8 @@ public class EvaluationSceneManager : MonoBehaviour
         deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
         float pError = deltaPos.magnitude;
         deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
-        return (pError < _posThreshold) && (rError < _rotThresholdDeg);
+        Debug.Log(string.Format("Error: {0}, {1}",pError, rError));
+        return (pError < _posThreshold) && ((rError < _rotThresholdDeg) || (rError > 360f - _rotThresholdDeg));
     }
 
     private void GenerateDie()
