@@ -12,6 +12,10 @@ public class EvaluationSceneManager : MonoBehaviour
     private float _cubeScale = 0.03f;
     private float _initRotationDeg = 120f;
     private Vector3 _initPosition = new Vector3(0.1f, 1f, 0.3f);
+    private Vector3 _posError;
+    private Quaternion _rotError;
+    private float _posThreshold = 0.005f, _rotThresholdDeg = 5f;
+    private bool _isTaskComplete = false;
 
     void Awake()
     {
@@ -34,6 +38,25 @@ public class EvaluationSceneManager : MonoBehaviour
             DestroyTarget();
             GenerateTarget();
         }
+
+        _isTaskComplete = CalculateError(out _posError, out _rotError);
+        _rotationInteractor.IsTaskComplete = _isTaskComplete;
+        if (_isTaskComplete)
+        {
+            ResetDie();
+            DestroyTarget();
+            GenerateTarget();
+            _rotationInteractor.Reset();
+        }
+    }
+
+    public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)
+    {
+        deltaPos = _target.transform.position - _die.transform.position;
+        deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
+        float pError = deltaPos.magnitude;
+        deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
+        return (pError < _posThreshold) && (rError < _rotThresholdDeg);
     }
 
     private void GenerateDie()
@@ -46,6 +69,12 @@ public class EvaluationSceneManager : MonoBehaviour
     private void DestroyDie()
     {
         Destroy(_die);
+    }
+
+    private void ResetDie()
+    {
+        _die.transform.position = new Vector3(-_initPosition.x, _initPosition.y, _initPosition.z);
+        _die.transform.localScale = new Vector3(_cubeScale, _cubeScale, _cubeScale);
     }
 
     private void GenerateTarget()

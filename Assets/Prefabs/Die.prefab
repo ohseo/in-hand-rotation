@@ -233,7 +233,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 1bcbfb03d835df84e895394e3895ba7e, type: 2}
+  - {fileID: 2100000, guid: a9cb144b423fa3744bcea879bbd8914d, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -419,7 +419,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 236f0d0e3746460459cfd349ca563f73, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _rotationInteractor: {fileID: 0}
 --- !u!1 &2202184669261945925
 GameObject:
   m_ObjectHideFlags: 0
@@ -470,7 +469,6 @@ MonoBehaviour:
   x: {fileID: 9069967115678708260}
   y: {fileID: 2472088081131578627}
   z: {fileID: 2482269700529519954}
-  rotationInteractor: {fileID: 0}
 --- !u!1 &5528947462538697860
 GameObject:
   m_ObjectHideFlags: 0
@@ -889,4 +887,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 230f4fa8990d32d4e867274d4659a415, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _rotationInteractor: {fileID: 0}

@@ -23,17 +23,17 @@ public class DieGrabHandler : MonoBehaviour
     {
         if (other.CompareTag("Target"))
         {
-            //
+            _rotationInteractor.IsOnTarget = true;
         }
         else if (other.CompareTag("TipSphere"))
         {
             spheresInContact++;
 
-            if (!_rotationInteractor.GetIsGrabbed())
+            if (!_rotationInteractor.IsGrabbed)
             {
                 if (spheresInContact > 2)
                 {
-                    _rotationInteractor.SetIsGrabbed(true);
+                    _rotationInteractor.IsGrabbed = true;
                 }
             }
         }
@@ -43,13 +43,13 @@ public class DieGrabHandler : MonoBehaviour
     {
         if (other.CompareTag("Target"))
         {
-            //
+            _rotationInteractor.IsOnTarget = false;
         }
         else if (other.CompareTag("TipSphere"))
         {
             spheresInContact--;
 
-            if (_rotationInteractor.GetIsGrabbed())
+            if (_rotationInteractor.IsGrabbed)
             {
                 if (spheresInContact < 2)
                 {

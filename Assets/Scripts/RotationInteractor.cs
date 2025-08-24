@@ -17,7 +17,7 @@ public class RotationInteractor : MonoBehaviour
     private OVRSkeleton _ovrRightSkeleton, _ovrLeftSkeleton;
     private OVRSkeleton _ovrSkeleton;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _thumbMetacarpal, _wristBone;
-    
+
     private GameObject _cube;
 
     private List<GameObject> _spheres = new List<GameObject>();
@@ -28,7 +28,7 @@ public class RotationInteractor : MonoBehaviour
 
     private LineRenderer _lineRenderer;
 
-    private bool _isGrabbed = false, _isClutching = false, _isReset = false;
+    private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false, _isTaskComplete = false;
 
     [SerializeField]
     private int _transferFunction = 0; // 0: linear, 1: accelerating(power), 2: decelerating(hyperbolic tangent)
@@ -87,34 +87,10 @@ public class RotationInteractor : MonoBehaviour
         _indexSphere = _spheres[1];
         _middleSphere = _spheres[2];
 
-        if (_isLeftHanded)
-        {
-            _ovrSkeleton = _ovrLeftSkeleton;
-        }
-        else
-        {
-            _ovrSkeleton = _ovrRightSkeleton;
-        }
+        if (_isLeftHanded) _ovrSkeleton = _ovrLeftSkeleton;
+        else _ovrSkeleton = _ovrRightSkeleton;
 
-        _indexTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexTip);
-        _middleTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_MiddleTip);
-        _thumbTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbTip);
-        _wristBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_Wrist);
-        _thumbMetacarpal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbMetacarpal);
-
-        _thumbSphere.transform.position = _thumbTipBone.Transform.position;
-        _indexSphere.transform.position = _indexTipBone.Transform.position;
-        _middleSphere.transform.position = _middleTipBone.Transform.position;
-
-        _worldWristRotation = _wristBone.Transform.rotation;
-        _origThumbRotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
-        _origScaledThumbRotation = _origThumbRotation;
-        _prevAngle = 0f;
-        _prevTriangleRotation = Quaternion.identity;
-        // prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
-        _prevCubeRotation = Quaternion.identity;
-        _grabOffsetPosition = Vector3.zero;
-        _grabOffsetRotation = Quaternion.identity;
+        InitGeometry();
 
         _keyActions = new Dictionary<KeyCode, Action>
         {
@@ -144,6 +120,7 @@ public class RotationInteractor : MonoBehaviour
         _cube.GetComponentInChildren<DieGrabHandler>().SetRotationInteractor(this);
         _cube.GetComponentInChildren<DieReleaseHandler>().SetRotationInteractor(this);
         _outline = _cube.GetComponentInChildren<Outline>();
+        _outline.OutlineColor = Color.blue;
         _outline.enabled = false;
     }
 
@@ -235,7 +212,38 @@ public class RotationInteractor : MonoBehaviour
             _prevAngle = angle;
             _prevTriangleRotation = _triangleRotation;
         }
+    }
 
+    public void Reset()
+    {
+        InitGeometry();
+        IsGrabbed = false;
+        IsClutching = false;
+        IsOnTarget = false;
+        IsTaskComplete = false;
+    }
+
+    private void InitGeometry()
+    {
+        _indexTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexTip);
+        _middleTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_MiddleTip);
+        _thumbTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbTip);
+        _wristBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_Wrist);
+        _thumbMetacarpal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbMetacarpal);
+
+        _thumbSphere.transform.position = _thumbTipBone.Transform.position;
+        _indexSphere.transform.position = _indexTipBone.Transform.position;
+        _middleSphere.transform.position = _middleTipBone.Transform.position;
+
+        _worldWristRotation = _wristBone.Transform.rotation;
+        _origThumbRotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
+        _origScaledThumbRotation = _origThumbRotation;
+        _prevAngle = 0f;
+        _prevTriangleRotation = Quaternion.identity;
+        // prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
+        _prevCubeRotation = Quaternion.identity;
+        _grabOffsetPosition = Vector3.zero;
+        _grabOffsetRotation = Quaternion.identity;
     }
 
     private void ToggleComponentsVisibility(bool b)
@@ -452,30 +460,6 @@ public class RotationInteractor : MonoBehaviour
         return true;
     }
 
-    public bool GetIsGrabbed()
-    {
-        return _isGrabbed;
-    }
-
-    public void SetIsGrabbed(bool b)
-    {
-        _isGrabbed = b;
-
-        if (_isGrabbed)
-        {
-            _grabOffsetPosition = _cube.transform.position - _centroidPosition;
-            _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
-            _prevCubeRotation = Quaternion.identity;
-            _outline.enabled = true;
-        }
-        else
-        {
-            _grabOffsetPosition = Vector3.zero;
-            _grabOffsetRotation = Quaternion.identity;
-            _outline.enabled = false;
-        }
-    }
-
     public void GetTriangleTransform(out Vector3 pos, out Quaternion rot)
     {
         pos = _centroidPosition;
@@ -491,5 +475,60 @@ public class RotationInteractor : MonoBehaviour
     public void SetCube(GameObject cube)
     {
         _cube = cube;
+    }
+
+    public bool IsGrabbed
+    {
+        get { return _isGrabbed; }
+        set
+        {
+            _isGrabbed = value;
+
+            if (_isGrabbed)
+            {
+                _grabOffsetPosition = _cube.transform.position - _centroidPosition;
+                _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
+                _prevCubeRotation = Quaternion.identity;
+                _outline.enabled = true;
+            }
+            else
+            {
+                _grabOffsetPosition = Vector3.zero;
+                _grabOffsetRotation = Quaternion.identity;
+                _outline.enabled = false;
+            }
+        }
+    }
+
+    public bool IsClutching
+    {
+        get { return _isClutching; }
+        set { _isClutching = value; }
+    }
+
+    public bool IsOnTarget
+    {
+        get { return _isOnTarget; }
+        set { _isOnTarget = value; }
+    }
+
+    public bool IsTaskComplete
+    {
+        get { return _isTaskComplete; }
+        set
+        {
+            if (_isTaskComplete != value)
+            {
+                _isTaskComplete = value;
+                if (_isTaskComplete)
+                {
+                    _outline.OutlineColor = Color.green;
+                }
+                else
+                {
+                    _outline.OutlineColor = Color.blue;
+                }
+            }
+        }
     }
 }
