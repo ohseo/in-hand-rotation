@@ -6,8 +6,6 @@ public class GizmoVisualizer : MonoBehaviour
 {
     [SerializeField]
     private LineRenderer x, y, z;
-
-    [SerializeField]
     private RotationInteractor rotationInteractor;
 
     private Vector3 pos;
@@ -41,5 +39,10 @@ public class GizmoVisualizer : MonoBehaviour
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, p);
         lineRenderer.SetPosition(1, p + d * length);
+    }
+
+    public void SetRotationInteractor(RotationInteractor r)
+    {
+        rotationInteractor = r;
     }
 }

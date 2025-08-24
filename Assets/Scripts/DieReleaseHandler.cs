@@ -5,7 +5,6 @@ using UnityEngine;
 public class DieReleaseHandler : MonoBehaviour
 {
     private int spheresInContact = 0;
-    [SerializeField]
     private RotationInteractor _rotationInteractor;
     // Start is called before the first frame update
     void Start()
@@ -26,7 +25,7 @@ public class DieReleaseHandler : MonoBehaviour
             //
         }
         else if (other.CompareTag("TipSphere"))
-        {                                                                                                                                                                                                                                                          
+        {
             spheresInContact++;
 
             if (!_rotationInteractor.GetIsGrabbed())
@@ -57,5 +56,10 @@ public class DieReleaseHandler : MonoBehaviour
                 }
             }
         }
+    }
+
+    public void SetRotationInteractor(RotationInteractor r)
+    {
+        _rotationInteractor = r;
     }
 }

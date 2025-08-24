@@ -17,10 +17,8 @@ public class RotationInteractor : MonoBehaviour
     private OVRSkeleton _ovrRightSkeleton, _ovrLeftSkeleton;
     private OVRSkeleton _ovrSkeleton;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _thumbMetacarpal, _wristBone;
-
-    [SerializeField]
+    
     private GameObject _cube;
-    private float _cubeScale = 0.03f;
 
     private List<GameObject> _spheres = new List<GameObject>();
     private GameObject _thumbSphere, _indexSphere, _middleSphere;
@@ -47,8 +45,6 @@ public class RotationInteractor : MonoBehaviour
     private Vector3 _grabOffsetPosition, _centroidPosition;
     private Quaternion _grabOffsetRotation;
     Vector3 _triangleForward, _triangleUp;
-
-    [SerializeField]
     private Outline _outline;
 
     [SerializeField]
@@ -74,7 +70,6 @@ public class RotationInteractor : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        _cube.transform.localScale = new Vector3(_cubeScale, _cubeScale, _cubeScale);
         for (int i = 0; i < 3; i++)
         {
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -110,7 +105,6 @@ public class RotationInteractor : MonoBehaviour
         _thumbSphere.transform.position = _thumbTipBone.Transform.position;
         _indexSphere.transform.position = _indexTipBone.Transform.position;
         _middleSphere.transform.position = _middleTipBone.Transform.position;
-        _cube.transform.position = new Vector3(0.1f, 1f, 0.3f);
 
         _worldWristRotation = _wristBone.Transform.rotation;
         _origThumbRotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
@@ -146,6 +140,10 @@ public class RotationInteractor : MonoBehaviour
         };
 
         _CenterCalculation = GetWeightedTriangleCentroid;
+
+        _cube.GetComponentInChildren<DieGrabHandler>().SetRotationInteractor(this);
+        _cube.GetComponentInChildren<DieReleaseHandler>().SetRotationInteractor(this);
+        _outline = _cube.GetComponentInChildren<Outline>();
         _outline.enabled = false;
     }
 
@@ -489,5 +487,9 @@ public class RotationInteractor : MonoBehaviour
         forward = _triangleForward;
         roughUp = _triangleUp;
     }
-    
+
+    public void SetCube(GameObject cube)
+    {
+        _cube = cube;
+    }
 }
