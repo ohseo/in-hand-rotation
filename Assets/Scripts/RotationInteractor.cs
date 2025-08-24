@@ -204,7 +204,8 @@ public class RotationInteractor : MonoBehaviour
                 _cubeRotation = _prevCubeRotation;
                 _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
             }
-            _cube.transform.position = _grabOffsetPosition + _centroidPosition;
+            // _cube.transform.position = rotatedOffset + _centroidPosition;
+            _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
         }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
