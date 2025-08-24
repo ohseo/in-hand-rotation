@@ -49,6 +49,9 @@ public class RotationInteractor : MonoBehaviour
     Vector3 triangleForward, triangleUp;
 
     [SerializeField]
+    private Outline outline;
+
+    [SerializeField]
     private TextMeshProUGUI textbox;
     private string[] transferText = { "linear", "power", "tanh" };
 
@@ -143,6 +146,7 @@ public class RotationInteractor : MonoBehaviour
         };
 
         CenterCalculation = GetWeightedTriangleCentroid;
+        outline.enabled = false;
     }
 
     // Update is called once per frame
@@ -464,11 +468,13 @@ public class RotationInteractor : MonoBehaviour
             grabOffsetPosition = cube.transform.position - centroidPosition;
             grabOffsetRotation = Quaternion.Inverse(wristBone.Transform.rotation) * cube.transform.rotation;
             prevCubeRotation = Quaternion.identity;
+            outline.enabled = true;
         }
         else
         {
             grabOffsetPosition = Vector3.zero;
             grabOffsetRotation = Quaternion.identity;
+            outline.enabled = false;
         }
     }
 
