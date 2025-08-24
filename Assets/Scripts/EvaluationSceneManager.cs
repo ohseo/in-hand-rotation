@@ -13,12 +13,17 @@ public class EvaluationSceneManager : MonoBehaviour
     private float _initRotationDeg = 120f;
     private Vector3 _initPosition = new Vector3(0.1f, 1f, 0.3f);
 
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         GenerateTarget();
         GenerateDie();
         _rotationInteractor.SetCube(_die);
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+
     }
 
     // Update is called once per frame
