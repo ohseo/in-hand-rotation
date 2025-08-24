@@ -2,12 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DieCollisionHandler : MonoBehaviour
+public class DieReleaseHandler : MonoBehaviour
 {
     private int spheresInContact = 0;
     [SerializeField]
     private RotationInteractor _rotationInteractor;
-
     // Start is called before the first frame update
     void Start()
     {
@@ -34,7 +33,7 @@ public class DieCollisionHandler : MonoBehaviour
             {
                 if (spheresInContact > 2)
                 {
-                    _rotationInteractor.SetIsGrabbed(true);
+                    // _rotationInteractor.SetIsGrabbed(true);
                 }
             }
         }

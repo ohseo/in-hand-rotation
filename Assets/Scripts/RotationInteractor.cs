@@ -54,7 +54,7 @@ public class RotationInteractor : MonoBehaviour
 
     public delegate Vector3 GetTriangleCenter(Vector3 p1, Vector3 p2, Vector3 p3);
     private GetTriangleCenter CenterCalculation;
-    private float thumbWeight = 2f; // 2*2
+    private float thumbWeight = 1f; // 2*2
     private float fingerWeight = 1f;
 
     void Awake()
