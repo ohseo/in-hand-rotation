@@ -51,7 +51,7 @@ public class RotationInteractor : MonoBehaviour
     // private string[] _transferText = { "linear", "power", "tanh" };
     private string[] _transferText = { "A", "B", "C" };
 
-    private bool _isCentroidCentered = true;
+    private bool _isCentroidCentered = false;
 
     void Awake()
     {
@@ -193,7 +193,10 @@ public class RotationInteractor : MonoBehaviour
                 _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
             }
             if (_isCentroidCentered) _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
-            else _cube.transform.position = _grabOffsetPosition + _centroidPosition;
+            else
+            {
+                _cube.transform.position = _grabOffsetPosition + _centroidPosition;
+            }
         }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
@@ -298,9 +301,12 @@ public class RotationInteractor : MonoBehaviour
 
     public Vector3 GetWeightedTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3)
     {
-        CalculateAngleAtVertex(p1, p2, p3, out float angle);
-        float weight = GetThumbWeight(angle);
-        return (weight * p1 + p2 + p3) / (weight + 1f + 1f);
+        if (CalculateAngleAtVertex(p1, p2, p3, out float angle))
+        {
+            float weight = GetThumbWeight(angle);
+            return (weight * p1 + p2 + p3) / (weight + 1f + 1f);
+        }
+        else return ((p1 + p2 + p3) / 3f);
     }
 
     public bool CalculateTriangleArea(Vector3 p1, Vector3 p2, Vector3 p3, out float area)
@@ -394,6 +400,16 @@ public class RotationInteractor : MonoBehaviour
         _outline.enabled = true;
     }
 
+    public void OnTarget()
+    {
+        _isOnTarget = true;
+    }
+
+    public void OffTarget()
+    {
+        _isOnTarget = false;
+    }
+
     public void OnRelease()
     {
         _isGrabbed = false;
@@ -402,27 +418,22 @@ public class RotationInteractor : MonoBehaviour
         _outline.enabled = false;
     }
 
+    public void OnTaskComplete()
+    {
+        _isTaskComplete = true;
+        _outline.OutlineColor = Color.green;
+    }
+
+    public void OnTaskIncomplete()
+    {
+        _isTaskComplete = false;
+        _outline.OutlineColor = Color.blue;
+    }
+
     public bool IsGrabbed
     {
         get { return _isGrabbed; }
-        set
-        {
-            _isGrabbed = value;
-
-            if (_isGrabbed)
-            {
-                _grabOffsetPosition = _cube.transform.position - _centroidPosition;
-                _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
-                _prevCubeRotation = Quaternion.identity;
-                _outline.enabled = true;
-            }
-            else
-            {
-                _grabOffsetPosition = Vector3.zero;
-                _grabOffsetRotation = Quaternion.identity;
-                _outline.enabled = false;
-            }
-        }
+        set { _isGrabbed = value; }
     }
 
     public bool IsClutching

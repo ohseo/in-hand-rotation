@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System;
 
 public class EvaluationSceneManager : MonoBehaviour
 {
@@ -22,7 +23,7 @@ public class EvaluationSceneManager : MonoBehaviour
     private Vector3 _initPosition = new Vector3(0.1f, 1.1f, 0.3f);
     private Vector3 _posError;
     private Quaternion _rotError;
-    private const float POSITION_THRESHOLD = 0.003f, ROTATION_THRESHOLD_DEG = 180f;
+    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
 
     private bool _isDwelling = false, _isTaskComplete = false, _isTimeout = false, _isInTrial = false;
 
@@ -35,6 +36,7 @@ public class EvaluationSceneManager : MonoBehaviour
     public DieGrabHandler _grabHandler;
     public DieReleaseHandler _releaseHandler;
 
+    public event Action OnTaskComplete, OnTaskIncomplete, OnTrialEnd, OnTrialStart;
 
 
     void Awake()
@@ -50,34 +52,42 @@ public class EvaluationSceneManager : MonoBehaviour
     {
         _grabHandler = _die.GetComponentInChildren<DieGrabHandler>();
         _grabHandler.OnGrab += _rotationInteractor.OnGrab;
+        _grabHandler.OnGrab += StartTrial;
+        _grabHandler.OnTarget += _rotationInteractor.OnTarget;
+        _grabHandler.OffTarget += _rotationInteractor.OffTarget;
         _releaseHandler = _die.GetComponentInChildren<DieReleaseHandler>();
         _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
-
+        OnTaskComplete += _rotationInteractor.OnTaskComplete;
+        OnTaskIncomplete += _rotationInteractor.OnTaskIncomplete;
+        OnTrialEnd += EndTrial;
+        OnTrialEnd += _rotationInteractor.Reset;
     }
 
     // Update is called once per frame
     void Update()
     {
-        // if (Input.GetKey(KeyCode.Return))
-        // {
-        //     DestroyTarget();
-        //     GenerateTarget();
-        // }
-
         bool _isErrorSmall = CalculateError(out _posError, out _rotError);
-        if (_isErrorSmall != _isTaskComplete)
+
+        if (_isErrorSmall && !_isTaskComplete)
         {
-            if (_isErrorSmall) { _dwellDuration = 0f; _isDwelling = true; }
-            else { _isDwelling = false; }
+            _dwellDuration = 0f;
+            _isDwelling = true;
+            _isTaskComplete = true;
+            OnTaskComplete?.Invoke();
         }
-        _isTaskComplete = _isErrorSmall;
-        _rotationInteractor.IsTaskComplete = _isTaskComplete;
+        else if (!_isErrorSmall && _isTaskComplete)
+        {
+            _isDwelling = false;
+            _isTaskComplete = false;
+            OnTaskIncomplete?.Invoke();
+        }
+
         if (_isDwelling)
         {
             _dwellDuration += Time.deltaTime;
             if (_dwellDuration > DWELL_THRESHOLD)
             {
-                EndTrial();
+                OnTrialEnd?.Invoke();
                 LoadNewScene();
             }
         }
@@ -92,14 +102,17 @@ public class EvaluationSceneManager : MonoBehaviour
 
     private void StartTrial()
     {
-        _isInTrial = true;
+        if (!_isInTrial)
+        {
+            _isInTrial = true;
+            _trialDuration = 0f;
+        }
     }
 
     private void EndTrial()
     {
         ResetDie();
         DestroyTarget();
-        _rotationInteractor.Reset();
         _isDwelling = false;
         _isInTrial = false;
     }
@@ -137,7 +150,7 @@ public class EvaluationSceneManager : MonoBehaviour
     private void GenerateTarget()
     {
         _target = Instantiate(_targetPrefab);
-        Vector3 axis = Random.onUnitSphere;
+        Vector3 axis = UnityEngine.Random.onUnitSphere;
         _target.transform.Rotate(axis.normalized, INIT_ROTATION_DEG);
         _target.transform.position = _initPosition;
         _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);

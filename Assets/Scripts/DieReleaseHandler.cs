@@ -43,14 +43,6 @@ public class DieReleaseHandler : MonoBehaviour
         else if (other.CompareTag("TipSphere"))
         {
             spheresInContact++;
-
-            if (!_rotationInteractor.IsGrabbed)
-            {
-                if (spheresInContact > 2)
-                {
-                    // _rotationInteractor.SetIsGrabbed(true);
-                }
-            }
         }
     }
 
@@ -68,7 +60,6 @@ public class DieReleaseHandler : MonoBehaviour
             {
                 if (spheresInContact < 2)
                 {
-                    // _rotationInteractor.IsGrabbed = false;
                     OnRelease?.Invoke();
                 }
             }

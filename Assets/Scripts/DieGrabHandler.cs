@@ -8,7 +8,7 @@ public class DieGrabHandler : MonoBehaviour
     private int spheresInContact = 0;
     private RotationInteractor _rotationInteractor;
 
-    public event Action OnGrab;
+    public event Action OnGrab, OnTarget, OffTarget;
 
     // Start is called before the first frame update
     void Start()
@@ -26,7 +26,7 @@ public class DieGrabHandler : MonoBehaviour
     {
         if (other.CompareTag("Target"))
         {
-            _rotationInteractor.IsOnTarget = true;
+            OnTarget?.Invoke();
         }
         else if (other.CompareTag("TipSphere"))
         {
@@ -36,7 +36,6 @@ public class DieGrabHandler : MonoBehaviour
             {
                 if (spheresInContact > 2)
                 {
-                    // _rotationInteractor.IsGrabbed = true;
                     OnGrab?.Invoke();
                 }
             }
@@ -47,19 +46,11 @@ public class DieGrabHandler : MonoBehaviour
     {
         if (other.CompareTag("Target"))
         {
-            _rotationInteractor.IsOnTarget = false;
+            OffTarget?.Invoke();
         }
         else if (other.CompareTag("TipSphere"))
         {
             spheresInContact--;
-
-            if (_rotationInteractor.IsGrabbed)
-            {
-                if (spheresInContact < 2)
-                {
-                    // _rotationInteractor.SetIsGrabbed(false);
-                }
-            }
         }
     }
 
