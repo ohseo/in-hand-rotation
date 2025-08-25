@@ -57,6 +57,7 @@ public class RotationInteractor : MonoBehaviour
     private GetTriangleCenter _CenterCalculation;
     private float _thumbWeight = 1.41f; // 2*2
     private float _fingerWeight = 1f;
+    private bool _isCentroidCentered = true;
 
     void Awake()
     {
@@ -66,6 +67,22 @@ public class RotationInteractor : MonoBehaviour
         if (!_isComponentsVisible)
         {
             _lineRenderer.enabled = false;
+        }
+    }
+
+    void ChangeFactorSet(bool b)
+    {
+        if (b)
+        {
+            //pi/3
+            _powFactorA = 0.955f; _tanhFactorA = 1.094f;
+            _powFactorB = 2d; _tanhFactorB = 1.829d;
+        }
+        else
+        {
+            //pi/6
+            _powFactorA = 1.910f; _tanhFactorA = 0.547f;
+            _powFactorB = 2d; _tanhFactorB = 3.657d;
         }
     }
 
@@ -103,18 +120,22 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.Keypad7, () => _transferFunction = 0},
             {KeyCode.Keypad8, () => _transferFunction = 1},
             {KeyCode.Keypad9, () => _transferFunction = 2},
-            {KeyCode.Keypad1, () => _scaleFactor = 1f},
-            {KeyCode.Keypad2, () => _scaleFactor = 2f},
-            // {KeyCode.Q, () => _CenterCalculation = GetWeightedTriangleCentroid},
-            // {KeyCode.W, () => _CenterCalculation = GetTriangleIncenter},
-            // {KeyCode.E, () => _CenterCalculation = GetTriangleCircumcenter},
-            // {KeyCode.R, () => _CenterCalculation = GetTriangleOrthocenter},
-            {KeyCode.Q, () => _thumbWeight = 1f},
-            {KeyCode.W, () => _thumbWeight = 2f},
-            {KeyCode.E, () => _thumbWeight = 3f},
-            {KeyCode.R, () => _thumbWeight = 4f},
-            {KeyCode.S, () => _isShearFactorOn = true},
-            {KeyCode.D, () => _isShearFactorOn = false}
+            // {KeyCode.Keypad1, () => _scaleFactor = 1f},
+            // {KeyCode.Keypad2, () => _scaleFactor = 2f},
+            {KeyCode.Keypad1, () => _isCentroidCentered = true},
+            {KeyCode.Keypad2, () => _isCentroidCentered = false},
+            { KeyCode.Q, () => _CenterCalculation = GetWeightedTriangleCentroid},
+            {KeyCode.W, () => _CenterCalculation = GetTriangleIncenter},
+            {KeyCode.E, () => _CenterCalculation = GetTriangleCircumcenter},
+            {KeyCode.R, () => _CenterCalculation = GetTriangleOrthocenter},
+            // {KeyCode.Q, () => _thumbWeight = 1f},
+            // {KeyCode.W, () => _thumbWeight = 2f},
+            // {KeyCode.E, () => _thumbWeight = 3f},
+            // {KeyCode.R, () => _thumbWeight = 4f},
+            // {KeyCode.S, () => _isShearFactorOn = true},
+            // {KeyCode.D, () => _isShearFactorOn = false}
+            {KeyCode.S, () => ChangeFactorSet(true)},
+            {KeyCode.D, () => ChangeFactorSet(false)}
         };
 
         _CenterCalculation = GetWeightedTriangleCentroid;
@@ -211,9 +232,8 @@ public class RotationInteractor : MonoBehaviour
                 _cubeRotation = _prevCubeRotation;
                 _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
             }
-            // _cube.transform.position = rotatedOffset + _centroidPosition;
-            _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
-            // _cube.transform.position = _grabOffsetPosition + _centroidPosition;
+            if (_isCentroidCentered) _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
+            else _cube.transform.position = _grabOffsetPosition + _centroidPosition;
         }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
@@ -333,7 +353,9 @@ public class RotationInteractor : MonoBehaviour
 
         // return new Vector3(centerX, centerY, centerZ);
         // return (p1 + p2 + p3) / 3f;
-        return (_thumbWeight * p1 + p2 + p3) / (_thumbWeight + 1f + 1f);
+        CalculateAngleAtVertex(p1, p2, p3, out float angle);
+        float weight = GetThumbWeight(angle);
+        return (weight * p1 + p2 + p3) / (weight + 1f + 1f);
         // return (p1 + w * p2 + w * p3) / (1f + w + w);
     }
 
@@ -479,6 +501,13 @@ public class RotationInteractor : MonoBehaviour
     {
         forward = _triangleForward;
         roughUp = _triangleUp;
+    }
+
+    private float GetThumbWeight(float deg)
+    {
+        if (deg < 10f) return 2f;
+        else if (deg > 90f) return 1f;
+        else return (170f - deg) / 80f;
     }
 
     public void SetCube(GameObject cube)

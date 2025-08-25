@@ -11,7 +11,7 @@ public class DieReleaseHandler : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-
+        this.transform.localScale = new Vector3(_releaseScale, _releaseScale, _releaseScale);
     }
 
     // Update is called once per frame
