@@ -385,6 +385,23 @@ public class RotationInteractor : MonoBehaviour
         _cube = cube;
     }
 
+    public void OnGrab()
+    {
+        _isGrabbed = true;
+        _grabOffsetPosition = _cube.transform.position - _centroidPosition;
+        _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
+        _prevCubeRotation = Quaternion.identity;
+        _outline.enabled = true;
+    }
+
+    public void OnRelease()
+    {
+        _isGrabbed = false;
+        _grabOffsetPosition = Vector3.zero;
+        _grabOffsetRotation = Quaternion.identity;
+        _outline.enabled = false;
+    }
+
     public bool IsGrabbed
     {
         get { return _isGrabbed; }

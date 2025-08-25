@@ -24,7 +24,7 @@ public class EvaluationSceneManager : MonoBehaviour
     private Quaternion _rotError;
     private const float POSITION_THRESHOLD = 0.003f, ROTATION_THRESHOLD_DEG = 180f;
 
-    private bool _isDwelling = false, _isTaskComplete = false, _isTimeout = false, _isInTrial = false, _isInSet = false;
+    private bool _isDwelling = false, _isTaskComplete = false, _isTimeout = false, _isInTrial = false;
 
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 20f;
     private float _dwellDuration, _trialDuration;
@@ -32,50 +32,76 @@ public class EvaluationSceneManager : MonoBehaviour
     private const int MAX_TRIAL_NUM = 15;
     private int _trialNum = 1;
 
-    
+    public DieGrabHandler _grabHandler;
+    public DieReleaseHandler _releaseHandler;
+
+
 
     void Awake()
     {
         GenerateTarget();
         GenerateDie();
         _rotationInteractor.SetCube(_die);
+        _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
     }
 
     // Start is called before the first frame update
     void Start()
     {
+        _grabHandler = _die.GetComponentInChildren<DieGrabHandler>();
+        _grabHandler.OnGrab += _rotationInteractor.OnGrab;
+        _releaseHandler = _die.GetComponentInChildren<DieReleaseHandler>();
+        _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
 
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKey(KeyCode.Return))
-        {
-            DestroyTarget();
-            GenerateTarget();
-        }
+        // if (Input.GetKey(KeyCode.Return))
+        // {
+        //     DestroyTarget();
+        //     GenerateTarget();
+        // }
 
-        bool b = CalculateError(out _posError, out _rotError);
-        if (b != _isTaskComplete)
+        bool _isErrorSmall = CalculateError(out _posError, out _rotError);
+        if (_isErrorSmall != _isTaskComplete)
         {
-            if (b) { _dwellTime = 0f; _isDwelling = true; }
+            if (_isErrorSmall) { _dwellDuration = 0f; _isDwelling = true; }
             else { _isDwelling = false; }
         }
-        _isTaskComplete = b;
+        _isTaskComplete = _isErrorSmall;
         _rotationInteractor.IsTaskComplete = _isTaskComplete;
         if (_isDwelling)
         {
-            _dwellTime += Time.deltaTime;
-            if (_dwellTime > _dwellThreshold)
+            _dwellDuration += Time.deltaTime;
+            if (_dwellDuration > DWELL_THRESHOLD)
             {
-                ResetDie();
-                DestroyTarget();
-                GenerateTarget();
-                _rotationInteractor.Reset();
-                _isDwelling = false;
+                EndTrial();
+                LoadNewScene();
             }
         }
+    }
+
+    private void LoadNewScene()
+    {
+        GenerateTarget();
+        _trialNum++;
+        _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+    }
+
+    private void StartTrial()
+    {
+        _isInTrial = true;
+    }
+
+    private void EndTrial()
+    {
+        ResetDie();
+        DestroyTarget();
+        _rotationInteractor.Reset();
+        _isDwelling = false;
+        _isInTrial = false;
     }
 
     public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)

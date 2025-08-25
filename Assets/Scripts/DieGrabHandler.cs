@@ -1,11 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class DieGrabHandler : MonoBehaviour
 {
     private int spheresInContact = 0;
     private RotationInteractor _rotationInteractor;
+
+    public event Action OnGrab;
 
     // Start is called before the first frame update
     void Start()
@@ -33,7 +36,8 @@ public class DieGrabHandler : MonoBehaviour
             {
                 if (spheresInContact > 2)
                 {
-                    _rotationInteractor.IsGrabbed = true;
+                    // _rotationInteractor.IsGrabbed = true;
+                    OnGrab?.Invoke();
                 }
             }
         }

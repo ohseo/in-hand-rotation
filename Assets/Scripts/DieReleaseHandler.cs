@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class DieReleaseHandler : MonoBehaviour
 {
@@ -8,6 +9,8 @@ public class DieReleaseHandler : MonoBehaviour
     private RotationInteractor _rotationInteractor;
     private float _releaseScale = 1.5f;
     private bool _isTaskComplete = false;
+
+    public event Action OnRelease;
     // Start is called before the first frame update
     void Start()
     {
@@ -65,7 +68,8 @@ public class DieReleaseHandler : MonoBehaviour
             {
                 if (spheresInContact < 2)
                 {
-                    _rotationInteractor.IsGrabbed = false;
+                    // _rotationInteractor.IsGrabbed = false;
+                    OnRelease?.Invoke();
                 }
             }
         }
