@@ -153,7 +153,7 @@ public class RotationInteractor : MonoBehaviour
         bool isTriangleValid = CalculateTriangleOrientation(thumbPosition, indexPosition, middlePosition, out _triangleRotation);
         bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
         // position cube with bones since spheres are modified
-        centroidPosition = GetWeightedTriangleCentroid(thumbTipBone.Transform.position, indexTipBone.Transform.position, middleTipBone.Transform.position);
+        _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
 
         if (_isGrabbed)
         {
