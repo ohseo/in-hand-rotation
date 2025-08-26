@@ -10,11 +10,7 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private bool _isComponentsVisible = true;
     [SerializeField]
-    private bool _isLeftHanded = false;
-    [SerializeField]
     private bool _isShearFactorOn = true;
-    [SerializeField]
-    private OVRSkeleton _ovrRightSkeleton, _ovrLeftSkeleton;
     private OVRSkeleton _ovrSkeleton;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _thumbMetacarpal, _wristBone;
 
@@ -29,8 +25,6 @@ public class RotationInteractor : MonoBehaviour
     private LineRenderer _lineRenderer;
 
     private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false, _isOverlapped = false;
-
-    [SerializeField]
     private int _transferFunction = 0; // 0: Baseline, 1: linear, 2: accelerating(power), 3: decelerating(hyperbolic tangent)
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
@@ -97,9 +91,6 @@ public class RotationInteractor : MonoBehaviour
         _indexSphere = _spheres[1];
         _middleSphere = _spheres[2];
 
-        if (_isLeftHanded) _ovrSkeleton = _ovrLeftSkeleton;
-        else _ovrSkeleton = _ovrRightSkeleton;
-
         InitGeometry();
 
         _keyActions = new Dictionary<KeyCode, Action>
@@ -111,7 +102,7 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.Keypad1, () => _transferFunction = 1},
             {KeyCode.Keypad2, () => _transferFunction = 2},
             {KeyCode.Keypad3, () => _transferFunction = 3},
-            { KeyCode.Keypad5, () => _isCentroidCentered = true},
+            {KeyCode.Keypad5, () => _isCentroidCentered = true},
             {KeyCode.Keypad6, () => _isCentroidCentered = false}
         };
 
@@ -125,24 +116,21 @@ public class RotationInteractor : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // transforms are on the local coordinates based on the wrist if not stated otherwise
-        _worldWristRotation = _wristBone.Transform.rotation;
-
-        if (!Input.anyKey) _isReset = false;
-        if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd();
-        if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart();
-
-        if (Input.anyKey && !_isClutching) ResetThumbOrigin();
-
-        foreach (var entry in _keyActions)
+        if (_transferFunction == 0) _isClutching = false;
+        else
         {
-            if (Input.GetKey(entry.Key))
-            {
-                entry.Value.Invoke();
-            }
+            if (!Input.anyKey) _isReset = false;
+            if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd();
+            if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart();
+            if (Input.anyKey && !_isClutching) ResetThumbOrigin();
         }
 
+        foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
+
         _textbox.text = _transferText[_transferFunction];
+
+        // transforms are on the local coordinates based on the wrist if not stated otherwise
+        _worldWristRotation = _wristBone.Transform.rotation;
 
         Vector3 thumbPosition = TransferBoneMovement();
         Vector3 indexPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
@@ -214,7 +202,7 @@ public class RotationInteractor : MonoBehaviour
         IsGrabbed = false;
         IsClutching = false;
         IsOnTarget = false;
-        IsTaskComplete = false;
+        IsOverlapped = false;
     }
 
     private void ResetThumbOrigin()
@@ -264,11 +252,6 @@ public class RotationInteractor : MonoBehaviour
             _centroidSphere.GetComponent<Renderer>().enabled = b;
         }
         _lineRenderer.enabled = b;
-    }
-
-    private void TransferCartesian()
-    {
-
     }
 
     private Vector3 TransferBoneMovement()
@@ -409,6 +392,16 @@ public class RotationInteractor : MonoBehaviour
         _cube = cube;
     }
 
+    public void SetTransferFunction(int i)
+    {
+        _transferFunction = i;
+    }
+
+    public void SetOVRSkeleton(OVRSkeleton s)
+    {
+        _ovrSkeleton = s;
+    }
+
     public void OnGrab()
     {
         _isGrabbed = true;
@@ -483,7 +476,7 @@ public class RotationInteractor : MonoBehaviour
         set { _isOnTarget = value; }
     }
 
-    public bool IsTaskComplete
+    public bool IsOverlapped
     {
         get { return _isOverlapped; }
         set
@@ -491,14 +484,8 @@ public class RotationInteractor : MonoBehaviour
             if (_isOverlapped != value)
             {
                 _isOverlapped = value;
-                if (_isOverlapped)
-                {
-                    _outline.OutlineColor = Color.green;
-                }
-                else
-                {
-                    _outline.OutlineColor = Color.blue;
-                }
+                if (_isOverlapped) _outline.OutlineColor = Color.green;
+                else _outline.OutlineColor = Color.blue;
             }
         }
     }

@@ -8,7 +8,7 @@ public class DieReleaseHandler : MonoBehaviour
     private int spheresInContact = 0;
     private RotationInteractor _rotationInteractor;
     private float _releaseScale = 1.5f;
-    private bool _isTaskComplete = false;
+    private bool _isOverlapped = false;
 
     public event Action OnRelease;
     // Start is called before the first frame update
@@ -20,17 +20,11 @@ public class DieReleaseHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (_rotationInteractor.IsTaskComplete != _isTaskComplete)
+        if (_rotationInteractor.IsOverlapped != _isOverlapped)
         {
-            _isTaskComplete = _rotationInteractor.IsTaskComplete;
-            if (_isTaskComplete)
-            {
-                this.transform.localScale = new Vector3(1f, 1f, 1f);
-            }
-            else
-            {
-                this.transform.localScale = new Vector3(_releaseScale, _releaseScale, _releaseScale);
-            }
+            _isOverlapped = _rotationInteractor.IsOverlapped;
+            if (_isOverlapped) this.transform.localScale = new Vector3(1f, 1f, 1f);
+            else this.transform.localScale = new Vector3(_releaseScale, _releaseScale, _releaseScale);
         }
     }
 

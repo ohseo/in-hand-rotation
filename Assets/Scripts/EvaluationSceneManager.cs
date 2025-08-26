@@ -11,11 +11,13 @@ public class EvaluationSceneManager : MonoBehaviour
     [SerializeField]
     private GameObject _diePrefab, _targetPrefab;
     [SerializeField]
+    protected TextMeshProUGUI _text;
+    [SerializeField]
     private int _expCondition = 0; // 0: Baseline, 1: Linear, 2: Power, 3: Tanh
     [SerializeField]
     private bool _isLeftHanded = false;
     [SerializeField]
-    protected TextMeshProUGUI _text;
+    private OVRSkeleton _ovrRightSkeleton, _ovrLeftSkeleton;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
@@ -33,8 +35,8 @@ public class EvaluationSceneManager : MonoBehaviour
     private const int MAX_TRIAL_NUM = 15;
     private int _trialNum = 1;
 
-    public DieGrabHandler _grabHandler;
-    public DieReleaseHandler _releaseHandler;
+    private DieGrabHandler _grabHandler;
+    private DieReleaseHandler _releaseHandler;
 
     public event Action OnOverlap, OnDepart, OnTrialEnd, OnTrialStart, OnTrialReset;
 
@@ -44,6 +46,9 @@ public class EvaluationSceneManager : MonoBehaviour
         GenerateTarget();
         GenerateDie();
         _rotationInteractor.SetCube(_die);
+        if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
+        else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
+        _rotationInteractor.SetTransferFunction(_expCondition);
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
     }
 
