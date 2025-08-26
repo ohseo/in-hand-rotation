@@ -31,10 +31,11 @@ public class RotationInteractor : MonoBehaviour
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
-    private Quaternion _worldWristRotation;
+    private Quaternion _worldWristRotation, _deltaThumbRotation, _scaledDeltaRotation;
+    private Vector3 _scaledWorldThumbTipPosition, _scaledThumbTipPosition;
     private Quaternion _cubeRotation, _prevCubeRotation;
     private Quaternion _prevTriangleRotation, _triangleRotation;
-    private float _prevAngle;
+    private float _thumbWeight, _triangleArea, _triangleP1Angle, _deltaTriangleP1Angle, _prevAngle;
     private Vector3 _grabOffsetPosition, _centroidPosition;
     private Quaternion _grabOffsetRotation;
     Vector3 _triangleForward, _triangleUp;
@@ -132,26 +133,27 @@ public class RotationInteractor : MonoBehaviour
         // transforms are on the local coordinates based on the wrist if not stated otherwise
         _worldWristRotation = _wristBone.Transform.rotation;
 
-        Vector3 thumbPosition = TransferBoneMovement();
-        Vector3 indexPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
-        Vector3 middlePosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
-        Vector3 worldThumbPosition = _wristBone.Transform.TransformPoint(thumbPosition);
+        _scaledThumbTipPosition = TransferBoneMovement();
+        Vector3 indexTipPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
+        Vector3 middleTipPosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
+        _scaledWorldThumbTipPosition = _wristBone.Transform.TransformPoint(_scaledThumbTipPosition);
 
         // _thumbSphere.transform.position = worldThumbPosition;
         _thumbSphere.transform.position = _thumbTipBone.Transform.position;
         _indexSphere.transform.position = _indexTipBone.Transform.position;
         _middleSphere.transform.position = _middleTipBone.Transform.position;
 
-        _lineRenderer.SetPosition(0, worldThumbPosition);
+        _lineRenderer.SetPosition(0, _scaledWorldThumbTipPosition);
         _lineRenderer.SetPosition(1, _indexTipBone.Transform.position);
         _lineRenderer.SetPosition(2, _middleTipBone.Transform.position);
-        _lineRenderer.SetPosition(3, worldThumbPosition);
+        _lineRenderer.SetPosition(3, _scaledWorldThumbTipPosition);
 
-        bool isAngleValid = CalculateAngleAtVertex(thumbPosition, indexPosition, middlePosition, out float angle);
-        bool isTriangleValid = CalculateTriangleOrientation(thumbPosition, indexPosition, middlePosition, out _triangleRotation);
-        bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
-        // position cube with bones since spheres are modified
+        bool isAngleValid = CalculateAngleAtVertex(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
+        bool isTriangleValid = CalculateTriangleOrientation(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
+        bool isTriangleSmall = CalculateTriangleArea(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out float _triangleArea);
+        // position cube with bones since spheres are modified. use world coordinates here.
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
+        // _centroidPosition = GetWeightedTriangleCentroid(_scaledWorldThumbTipPosition, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
 
         if (_isCentroidCentered) _centroidSphere.transform.position = _centroidPosition;
 
@@ -163,10 +165,10 @@ public class RotationInteractor : MonoBehaviour
                 {
                     if (isAngleValid && isTriangleValid && isTriangleSmall)
                     {
-                        float angleDifference = angle - _prevAngle;
+                        _deltaTriangleP1Angle = _triangleP1Angle - _prevAngle;
                         Vector3 triangleAxis = _triangleRotation * Vector3.up;
                         Quaternion deltaShearRotation, deltaTriangleRotation;
-                        if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(angleDifference, triangleAxis);
+                        if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(_deltaTriangleP1Angle, triangleAxis);
                         else deltaShearRotation = Quaternion.identity;
                         deltaTriangleRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
                         deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out _);
@@ -191,7 +193,7 @@ public class RotationInteractor : MonoBehaviour
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
         {
-            _prevAngle = angle;
+            _prevAngle = _triangleP1Angle;
             _prevTriangleRotation = _triangleRotation;
         }
     }
@@ -256,19 +258,16 @@ public class RotationInteractor : MonoBehaviour
 
     private Vector3 TransferBoneMovement()
     {
-        Quaternion worldWristRotation = _wristBone.Transform.rotation;
         Quaternion worldThumbRotation = _thumbMetacarpal.Transform.rotation;
 
         Vector3 thumbPosition = _wristBone.Transform.InverseTransformPoint(_thumbMetacarpal.Transform.position);
         Vector3 thumbTipPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
-        Quaternion thumbRotation = Quaternion.Inverse(worldWristRotation) * worldThumbRotation;
-        Quaternion deltaThumbRotation = thumbRotation * Quaternion.Inverse(_origThumbRotation);
-        deltaThumbRotation.ToAngleAxis(out float angle, out Vector3 axis);
+        Quaternion thumbRotation = Quaternion.Inverse(_worldWristRotation) * worldThumbRotation;
+        _deltaThumbRotation = thumbRotation * Quaternion.Inverse(_origThumbRotation);
+        _deltaThumbRotation.ToAngleAxis(out float angle, out Vector3 axis);
 
-        if (angle < _thumbAngleThreshold)
-        {
-            return thumbTipPosition;
-        }
+        if (angle < _thumbAngleThreshold) return thumbTipPosition;
+        if (_transferFunction == 0) return thumbTipPosition;
 
         double angleRadian = angle / 180.0 * Math.PI;
         float modifiedAngle = angle;
@@ -286,8 +285,8 @@ public class RotationInteractor : MonoBehaviour
             modifiedAngle = _tanhFactorA * (float)Math.Tanh(_tanhFactorB * angleRadian) * 180f / (float)Math.PI;
         }
 
-        Quaternion scaledDeltaRotation = Quaternion.AngleAxis(modifiedAngle, axis);
-        Quaternion scaledThumbRotation = scaledDeltaRotation * _origScaledThumbRotation;
+        _scaledDeltaRotation = Quaternion.AngleAxis(modifiedAngle, axis);
+        Quaternion scaledThumbRotation = _scaledDeltaRotation * _origScaledThumbRotation;
 
         Vector3 localTipPosition = _thumbMetacarpal.Transform.InverseTransformPoint(_thumbTipBone.Transform.position); // local based on thumb metacarpal
         Vector3 scaledTipPosition = thumbPosition + scaledThumbRotation * localTipPosition;
@@ -304,8 +303,8 @@ public class RotationInteractor : MonoBehaviour
     {
         if (CalculateAngleAtVertex(p1, p2, p3, out float angle))
         {
-            float weight = GetThumbWeight(angle);
-            return (weight * p1 + p2 + p3) / (weight + 1f + 1f);
+            _thumbWeight = GetThumbWeight(angle);
+            return (_thumbWeight * p1 + p2 + p3) / (_thumbWeight + 1f + 1f);
         }
         else return ((p1 + p2 + p3) / 3f);
     }
@@ -367,6 +366,12 @@ public class RotationInteractor : MonoBehaviour
         orientation = Quaternion.LookRotation(forward, normal);
         return true;
     }
+    private float GetThumbWeight(float deg)
+    {
+        if (deg < 10f) return 2f;
+        else if (deg > 90f) return 1f;
+        else return (170f - deg) / 80f;
+    }
 
     public void GetTriangleTransform(out Vector3 pos, out Quaternion rot)
     {
@@ -380,11 +385,114 @@ public class RotationInteractor : MonoBehaviour
         roughUp = _triangleUp;
     }
 
-    private float GetThumbWeight(float deg)
+    public void GetDieLocalTransform(out Vector3 position, out Quaternion rotation)
     {
-        if (deg < 10f) return 2f;
-        else if (deg > 90f) return 1f;
-        else return (170f - deg) / 80f;
+        position = _wristBone.Transform.InverseTransformPoint(_cube.transform.position);
+        rotation = Quaternion.Inverse(_worldWristRotation) * _cube.transform.rotation;
+    }
+
+    public void GetWristWorldTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _wristBone.Transform.position;
+        rotation = _wristBone.Transform.rotation;
+    }
+
+    public void GetThumbTipWorldTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _thumbTipBone.Transform.position;
+        rotation = _thumbTipBone.Transform.rotation;
+    }
+
+    public void GetIndexTipWorldTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _indexTipBone.Transform.position;
+        rotation = _indexTipBone.Transform.rotation;
+    }
+
+    public void GetMiddleTipWorldTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _middleTipBone.Transform.position;
+        rotation = _middleTipBone.Transform.rotation;
+    }
+
+    public void GetMetacarpalWorldTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _thumbMetacarpal.Transform.position;
+        rotation = _thumbMetacarpal.Transform.rotation;
+    }
+
+    public void GetModifiedThumbTipWorldPosition(out Vector3 position)
+    {
+        position = _scaledWorldThumbTipPosition;
+    }
+
+    public void GetThumbTipLocalTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
+        rotation = Quaternion.Inverse(_worldWristRotation) * _thumbTipBone.Transform.rotation;
+    }
+
+    public void GetIndexTipLocalTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
+        rotation = Quaternion.Inverse(_worldWristRotation) * _indexTipBone.Transform.rotation;
+    }
+
+    public void GetMiddleTipLocalTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
+        rotation = Quaternion.Inverse(_worldWristRotation) * _middleTipBone.Transform.rotation;
+    }
+
+    public void GetMetacarpalLocalTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _wristBone.Transform.InverseTransformPoint(_thumbMetacarpal.Transform.position);
+        rotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
+    }
+
+    public void GetModifiedThumbTipLocalPosition(out Vector3 position)
+    {
+        position = _scaledThumbTipPosition;
+    }
+
+    public void GetDeltaMetacarpalRotation(out Quaternion rotation, out float angle, out Vector3 axis)
+    {
+        rotation = _deltaThumbRotation;
+        _deltaThumbRotation.ToAngleAxis(out angle, out axis);
+    }
+
+    public void GetModifiedDeltaMetacarpalRotation(out Quaternion rotation, out float angle, out Vector3 axis)
+    {
+        rotation = _scaledDeltaRotation;
+        _scaledDeltaRotation.ToAngleAxis(out angle, out axis);
+    }
+
+    public void GetTriangleWorldRotation(out Quaternion rotation)
+    {
+        rotation = _worldWristRotation * _triangleRotation;
+    }
+
+    public void GetTriangleLocalRotation(out Quaternion rotation)
+    {
+        rotation = _triangleRotation;
+    }
+
+    public void GetWeightedCentroidWorldPosition(out Vector3 position)
+    {
+        position = _centroidPosition;
+    }
+
+    public void GetWeightedCentroidLocalPosition(out Vector3 position)
+    {
+        position = _wristBone.Transform.InverseTransformPoint(_centroidPosition);
+    }
+
+    public void GetTriangleProperties(out float weight, out float area, out float angle, out float deltaAngle)
+    {
+        weight = _thumbWeight;
+        area = _triangleArea;
+        angle = _triangleP1Angle;
+        deltaAngle = _deltaTriangleP1Angle;
     }
 
     public void SetCube(GameObject cube)

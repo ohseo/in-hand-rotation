@@ -18,16 +18,18 @@ public class EvaluationSceneManager : MonoBehaviour
     private bool _isLeftHanded = false;
     [SerializeField]
     private OVRSkeleton _ovrRightSkeleton, _ovrLeftSkeleton;
+    [SerializeField]
+    private GameObject _centerEyeAnchor;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
     private const float INIT_ROTATION_DEG = 135f;
     private Vector3 _initPosition = new Vector3(0.1f, 1.1f, 0.3f);
-    private Vector3 _posError;
-    private Quaternion _rotError;
+    private Vector3 _targetOffsetPosition;
+    private Quaternion _targetOffsetRotation;
     private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
 
-    private bool _isDwelling = false, isOverlapped = false, _isTimeout = false, _isInTrial = false;
+    private bool _isOverlapped = false, _isTimeout = false, _isInTrial = false;
 
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 20f;
     private float _dwellDuration, _trialDuration;
@@ -46,9 +48,12 @@ public class EvaluationSceneManager : MonoBehaviour
         GenerateTarget();
         GenerateDie();
         _rotationInteractor.SetCube(_die);
+
         if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
         else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
+
         _rotationInteractor.SetTransferFunction(_expCondition);
+
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
     }
 
@@ -84,23 +89,21 @@ public class EvaluationSceneManager : MonoBehaviour
             OnTrialEnd?.Invoke();
         }
 
-        bool _isErrorSmall = CalculateError(out _posError, out _rotError);
+        bool _isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
 
-        if (_isErrorSmall && !isOverlapped)
+        if (_isErrorSmall && !_isOverlapped)
         {
             _dwellDuration = 0f;
-            _isDwelling = true;
-            isOverlapped = true;
+            _isOverlapped = true;
             OnOverlap?.Invoke();
         }
-        else if (!_isErrorSmall && isOverlapped)
+        else if (!_isErrorSmall && _isOverlapped)
         {
-            _isDwelling = false;
-            isOverlapped = false;
+            _isOverlapped = false;
             OnDepart?.Invoke();
         }
 
-        if (_isDwelling)
+        if (_isOverlapped)
         {
             _dwellDuration += Time.deltaTime;
             if (_dwellDuration > DWELL_THRESHOLD)
@@ -131,14 +134,14 @@ public class EvaluationSceneManager : MonoBehaviour
     {
         ResetDie();
         DestroyTarget();
-        _isDwelling = false;
+        _isOverlapped = false;
         _isInTrial = false;
     }
 
     private void ResetTrial()
     {
         ResetDie();
-        _isDwelling = false;
+        _isOverlapped = false;
         _trialDuration = 0f;
     }
 
@@ -184,5 +187,31 @@ public class EvaluationSceneManager : MonoBehaviour
     private void DestroyTarget()
     {
         Destroy(_target);
+    }
+
+    public void GetHeadTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _centerEyeAnchor.transform.position;
+        rotation = _centerEyeAnchor.transform.rotation;
+    }
+
+    public void GetDieTransform(out Vector3 position, out Quaternion rotation)
+    {
+        position = _die.transform.position;
+        rotation = _die.transform.rotation;
+    }
+
+    public void GetTargetOffset(out Vector3 position, out Quaternion rotation)
+    {
+        position = _targetOffsetPosition;
+        rotation = _targetOffsetRotation;
+    }
+
+    public void GetStatus(out bool isGrabbing, out bool isClutching, out bool isOverlapped, out bool isTimeout)
+    {
+        isGrabbing = _rotationInteractor.IsGrabbed;
+        isClutching = _rotationInteractor.IsClutching;
+        isOverlapped = _isOverlapped;
+        isTimeout = _isTimeout;
     }
 }

@@ -466,11 +466,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isComponentsVisible: 0
-  _isLeftHanded: 0
   _isShearFactorOn: 1
-  _ovrRightSkeleton: {fileID: 643088644}
-  _ovrLeftSkeleton: {fileID: 750940862}
-  _transferFunction: 0
   _textbox: {fileID: 740122283}
 --- !u!4 &94333790
 Transform:
@@ -7940,9 +7936,13 @@ MonoBehaviour:
   _rotationInteractor: {fileID: 94333789}
   _diePrefab: {fileID: 1016349629435091919, guid: 1cf35a6e9e670d042992bbae2273f70c, type: 3}
   _targetPrefab: {fileID: 1618645656371774453, guid: 9dd4e15a530376848b3093ec97b91b12, type: 3}
+  _text: {fileID: 565504827}
   _expCondition: 0
   _isLeftHanded: 0
-  _text: {fileID: 565504827}
+  _ovrRightSkeleton: {fileID: 643088644}
+  _ovrLeftSkeleton: {fileID: 750940862}
+  _grabHandler: {fileID: 0}
+  _releaseHandler: {fileID: 0}
 --- !u!4 &1728467033
 Transform:
   m_ObjectHideFlags: 0
@@ -10838,7 +10838,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 2028397337}
   - {fileID: 2126774104}
+  - {fileID: 1728467033}
   - {fileID: 94333790}
   - {fileID: 854956794}
   - {fileID: 1100874364}
-  - {fileID: 1728467033}
