@@ -1,8 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-using System;
 
 public class EvaluationSceneManager : MonoBehaviour
 {
@@ -36,7 +36,7 @@ public class EvaluationSceneManager : MonoBehaviour
     public DieGrabHandler _grabHandler;
     public DieReleaseHandler _releaseHandler;
 
-    public event Action OnTaskComplete, OnTaskIncomplete, OnTrialEnd, OnTrialStart;
+    public event Action OnTaskComplete, OnTaskIncomplete, OnTrialEnd, OnTrialStart, OnTrialReset;
 
 
     void Awake()
@@ -61,11 +61,19 @@ public class EvaluationSceneManager : MonoBehaviour
         OnTaskIncomplete += _rotationInteractor.OnTaskIncomplete;
         OnTrialEnd += EndTrial;
         OnTrialEnd += _rotationInteractor.Reset;
+        OnTrialReset += ResetTrial;
+        OnTrialReset += _rotationInteractor.Reset;
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKey(KeyCode.Return))
+        {
+            OnTrialReset?.Invoke();
+            return;
+        }
+
         bool _isErrorSmall = CalculateError(out _posError, out _rotError);
 
         if (_isErrorSmall && !_isTaskComplete)
@@ -115,6 +123,12 @@ public class EvaluationSceneManager : MonoBehaviour
         DestroyTarget();
         _isDwelling = false;
         _isInTrial = false;
+    }
+
+    private void ResetTrial()
+    {
+        ResetDie();
+        _isDwelling = false;
     }
 
     public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)

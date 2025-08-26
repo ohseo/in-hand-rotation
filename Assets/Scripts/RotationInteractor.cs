@@ -1,7 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System;
 using UnityEngine;
 using TMPro;
 
@@ -44,7 +44,9 @@ public class RotationInteractor : MonoBehaviour
     private Vector3 _grabOffsetPosition, _centroidPosition;
     private Quaternion _grabOffsetRotation;
     Vector3 _triangleForward, _triangleUp;
+
     private Outline _outline;
+    private const float OUTLINE_WIDTH_DEFAULT = 5f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
     [SerializeField]
     private TextMeshProUGUI _textbox;
@@ -94,7 +96,6 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.KeypadEnter, () => _cube.transform.rotation = _wristBone.Transform.rotation},
             {KeyCode.KeypadMinus, () => ToggleComponentsVisibility(false)},
             {KeyCode.KeypadPlus, () => ToggleComponentsVisibility(true)},
-            {KeyCode.Space, () => _isClutching = true},
             {KeyCode.Keypad7, () => _transferFunction = 0},
             {KeyCode.Keypad8, () => _transferFunction = 1},
             {KeyCode.Keypad9, () => _transferFunction = 2},
@@ -116,7 +117,8 @@ public class RotationInteractor : MonoBehaviour
         _worldWristRotation = _wristBone.Transform.rotation;
 
         if (!Input.anyKey) _isReset = false;
-        if (!Input.GetKey(KeyCode.Space)) _isClutching = false;
+        if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd();
+        if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart();
 
         if ((Input.anyKey && !_isClutching) || (_isClutching && !_isReset))
         {
@@ -428,6 +430,18 @@ public class RotationInteractor : MonoBehaviour
     {
         _isTaskComplete = false;
         _outline.OutlineColor = Color.blue;
+    }
+
+    public void OnClutchStart()
+    {
+        _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
+        _isClutching = true;
+    }
+
+    public void OnClutchEnd()
+    {
+        _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
+        _isClutching = false;
     }
 
     public bool IsGrabbed
