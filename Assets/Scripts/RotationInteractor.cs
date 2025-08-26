@@ -54,6 +54,7 @@ public class RotationInteractor : MonoBehaviour
     private string[] _transferText = { "A", "B", "C" };
 
     private bool _isCentroidCentered = false;
+    private GameObject _centroidSphere;
 
     void Awake()
     {
@@ -80,6 +81,16 @@ public class RotationInteractor : MonoBehaviour
             sphere.GetComponent<Collider>().isTrigger = true;
             sphere.tag = "TipSphere";
             _spheres.Add(sphere);
+        }
+
+        if (_isCentroidCentered)
+        {
+            _centroidSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            _centroidSphere.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
+            if (!_isComponentsVisible)
+            {
+                sphere.GetComponent<Renderer>().enabled = false;
+            }
         }
 
         _thumbSphere = _spheres[0];
@@ -156,6 +167,8 @@ public class RotationInteractor : MonoBehaviour
         bool isTriangleSmall = CalculateTriangleArea(thumbPosition, indexPosition, middlePosition, out float area);
         // position cube with bones since spheres are modified
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
+
+        _centroidSphere.transform.position = _centroidPosition;
 
         if (_isGrabbed)
         {
@@ -246,6 +259,10 @@ public class RotationInteractor : MonoBehaviour
         foreach (GameObject sphere in _spheres)
         {
             sphere.GetComponent<Renderer>().enabled = b;
+        }
+        if (_isCentroidCentered)
+        {
+            _centroidSphere.GetComponent<Renderer>().enabled = b;
         }
         _lineRenderer.enabled = b;
     }
