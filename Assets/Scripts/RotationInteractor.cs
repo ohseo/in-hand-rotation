@@ -28,10 +28,10 @@ public class RotationInteractor : MonoBehaviour
 
     private LineRenderer _lineRenderer;
 
-    private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false, _isTaskComplete = false;
+    private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false, _isOverlapped = false;
 
     [SerializeField]
-    private int _transferFunction = 0; // 0: linear, 1: accelerating(power), 2: decelerating(hyperbolic tangent)
+    private int _transferFunction = 0; // 0: Baseline, 1: linear, 2: accelerating(power), 3: decelerating(hyperbolic tangent)
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private Dictionary<KeyCode, Action> _keyActions;
@@ -51,7 +51,7 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI _textbox;
     // private string[] _transferText = { "linear", "power", "tanh" };
-    private string[] _transferText = { "A", "B", "C" };
+    private string[] _transferText = { "O", "A", "B", "C" };
 
     private bool _isCentroidCentered = false;
     private GameObject _centroidSphere;
@@ -89,7 +89,7 @@ public class RotationInteractor : MonoBehaviour
             _centroidSphere.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
             if (!_isComponentsVisible)
             {
-                sphere.GetComponent<Renderer>().enabled = false;
+                _centroidSphere.GetComponent<Renderer>().enabled = false;
             }
         }
 
@@ -107,11 +107,12 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.KeypadEnter, () => _cube.transform.rotation = _wristBone.Transform.rotation},
             {KeyCode.KeypadMinus, () => ToggleComponentsVisibility(false)},
             {KeyCode.KeypadPlus, () => ToggleComponentsVisibility(true)},
-            {KeyCode.Keypad7, () => _transferFunction = 0},
-            {KeyCode.Keypad8, () => _transferFunction = 1},
-            {KeyCode.Keypad9, () => _transferFunction = 2},
-            {KeyCode.Keypad1, () => _isCentroidCentered = true},
-            {KeyCode.Keypad2, () => _isCentroidCentered = false}
+            {KeyCode.Keypad0, () => _transferFunction = 0},
+            {KeyCode.Keypad1, () => _transferFunction = 1},
+            {KeyCode.Keypad2, () => _transferFunction = 2},
+            {KeyCode.Keypad3, () => _transferFunction = 3},
+            { KeyCode.Keypad5, () => _isCentroidCentered = true},
+            {KeyCode.Keypad6, () => _isCentroidCentered = false}
         };
 
         _cube.GetComponentInChildren<DieGrabHandler>().SetRotationInteractor(this);
@@ -168,7 +169,7 @@ public class RotationInteractor : MonoBehaviour
         // position cube with bones since spheres are modified
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
 
-        _centroidSphere.transform.position = _centroidPosition;
+        if (_isCentroidCentered) _centroidSphere.transform.position = _centroidPosition;
 
         if (_isGrabbed)
         {
@@ -291,15 +292,15 @@ public class RotationInteractor : MonoBehaviour
         double angleRadian = angle / 180.0 * Math.PI;
         float modifiedAngle = angle;
 
-        if (_transferFunction == 0)
+        if (_transferFunction == 1)
         {
             modifiedAngle = angle;
         }
-        else if (_transferFunction == 1)
+        else if (_transferFunction == 2)
         {
             modifiedAngle = _powFactorA * (float)Math.Pow(angleRadian, _powFactorB) * 180f / (float)Math.PI;
         }
-        else if (_transferFunction == 2)
+        else if (_transferFunction == 3)
         {
             modifiedAngle = _tanhFactorA * (float)Math.Tanh(_tanhFactorB * angleRadian) * 180f / (float)Math.PI;
         }
@@ -437,15 +438,15 @@ public class RotationInteractor : MonoBehaviour
         _outline.enabled = false;
     }
 
-    public void OnTaskComplete()
+    public void OnOverlap()
     {
-        _isTaskComplete = true;
+        _isOverlapped = true;
         _outline.OutlineColor = Color.green;
     }
 
-    public void OnTaskIncomplete()
+    public void OnDepart()
     {
-        _isTaskComplete = false;
+        _isOverlapped = false;
         _outline.OutlineColor = Color.blue;
     }
 
@@ -481,13 +482,13 @@ public class RotationInteractor : MonoBehaviour
 
     public bool IsTaskComplete
     {
-        get { return _isTaskComplete; }
+        get { return _isOverlapped; }
         set
         {
-            if (_isTaskComplete != value)
+            if (_isOverlapped != value)
             {
-                _isTaskComplete = value;
-                if (_isTaskComplete)
+                _isOverlapped = value;
+                if (_isOverlapped)
                 {
                     _outline.OutlineColor = Color.green;
                 }

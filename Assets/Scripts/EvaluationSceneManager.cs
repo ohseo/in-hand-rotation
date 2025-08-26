@@ -25,7 +25,7 @@ public class EvaluationSceneManager : MonoBehaviour
     private Quaternion _rotError;
     private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
 
-    private bool _isDwelling = false, _isTaskComplete = false, _isTimeout = false, _isInTrial = false;
+    private bool _isDwelling = false, isOverlapped = false, _isTimeout = false, _isInTrial = false;
 
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 20f;
     private float _dwellDuration, _trialDuration;
@@ -36,7 +36,7 @@ public class EvaluationSceneManager : MonoBehaviour
     public DieGrabHandler _grabHandler;
     public DieReleaseHandler _releaseHandler;
 
-    public event Action OnTaskComplete, OnTaskIncomplete, OnTrialEnd, OnTrialStart, OnTrialReset;
+    public event Action OnOverlap, OnDepart, OnTrialEnd, OnTrialStart, OnTrialReset;
 
 
     void Awake()
@@ -57,8 +57,8 @@ public class EvaluationSceneManager : MonoBehaviour
         _grabHandler.OffTarget += _rotationInteractor.OffTarget;
         _releaseHandler = _die.GetComponentInChildren<DieReleaseHandler>();
         _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
-        OnTaskComplete += _rotationInteractor.OnTaskComplete;
-        OnTaskIncomplete += _rotationInteractor.OnTaskIncomplete;
+        OnOverlap += _rotationInteractor.OnOverlap;
+        OnDepart += _rotationInteractor.OnDepart;
         OnTrialEnd += EndTrial;
         OnTrialEnd += _rotationInteractor.Reset;
         OnTrialReset += ResetTrial;
@@ -74,20 +74,25 @@ public class EvaluationSceneManager : MonoBehaviour
             return;
         }
 
+        if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
+        {
+            OnTrialEnd?.Invoke();
+        }
+
         bool _isErrorSmall = CalculateError(out _posError, out _rotError);
 
-        if (_isErrorSmall && !_isTaskComplete)
+        if (_isErrorSmall && !isOverlapped)
         {
             _dwellDuration = 0f;
             _isDwelling = true;
-            _isTaskComplete = true;
-            OnTaskComplete?.Invoke();
+            isOverlapped = true;
+            OnOverlap?.Invoke();
         }
-        else if (!_isErrorSmall && _isTaskComplete)
+        else if (!_isErrorSmall && isOverlapped)
         {
             _isDwelling = false;
-            _isTaskComplete = false;
-            OnTaskIncomplete?.Invoke();
+            isOverlapped = false;
+            OnDepart?.Invoke();
         }
 
         if (_isDwelling)
@@ -129,6 +134,7 @@ public class EvaluationSceneManager : MonoBehaviour
     {
         ResetDie();
         _isDwelling = false;
+        _trialDuration = 0f;
     }
 
     public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)
