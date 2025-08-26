@@ -132,11 +132,7 @@ public class RotationInteractor : MonoBehaviour
         if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd();
         if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart();
 
-        if ((Input.anyKey && !_isClutching) || (_isClutching && !_isReset))
-        {
-            _origThumbRotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
-            _origScaledThumbRotation = _origThumbRotation;
-        }
+        if (Input.anyKey && !_isClutching) ResetThumbOrigin();
 
         foreach (var entry in _keyActions)
         {
@@ -194,14 +190,7 @@ public class RotationInteractor : MonoBehaviour
                         _prevCubeRotation = _cubeRotation;
                     }
                 }
-                else
-                {
-                    _grabOffsetPosition = _cube.transform.position - _centroidPosition;
-                    _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
-                    _prevCubeRotation = Quaternion.identity;
-                    _cubeRotation = Quaternion.identity;
-                    _isReset = true;
-                }
+                else _isReset = true;
             }
             else
             {
@@ -209,10 +198,7 @@ public class RotationInteractor : MonoBehaviour
                 _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
             }
             if (_isCentroidCentered) _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
-            else
-            {
-                _cube.transform.position = _grabOffsetPosition + _centroidPosition;
-            }
+            else _cube.transform.position = _grabOffsetPosition + _centroidPosition;
         }
 
         if (isAngleValid && isTriangleValid && isTriangleSmall)
@@ -231,6 +217,19 @@ public class RotationInteractor : MonoBehaviour
         IsTaskComplete = false;
     }
 
+    private void ResetThumbOrigin()
+    {
+        _origThumbRotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
+        _origScaledThumbRotation = _origThumbRotation;
+    }
+
+    private void ResetGrabOffset()
+    {
+        _grabOffsetPosition = _cube.transform.position - _centroidPosition;
+        _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
+        _prevCubeRotation = Quaternion.identity;
+    }
+
     private void InitGeometry()
     {
         _indexTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexTip);
@@ -244,8 +243,7 @@ public class RotationInteractor : MonoBehaviour
         _middleSphere.transform.position = _middleTipBone.Transform.position;
 
         _worldWristRotation = _wristBone.Transform.rotation;
-        _origThumbRotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
-        _origScaledThumbRotation = _origThumbRotation;
+        ResetThumbOrigin();
         _prevAngle = 0f;
         _prevTriangleRotation = Quaternion.identity;
         // prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
@@ -414,9 +412,7 @@ public class RotationInteractor : MonoBehaviour
     public void OnGrab()
     {
         _isGrabbed = true;
-        _grabOffsetPosition = _cube.transform.position - _centroidPosition;
-        _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
-        _prevCubeRotation = Quaternion.identity;
+        ResetGrabOffset();
         _outline.enabled = true;
     }
 
@@ -452,6 +448,13 @@ public class RotationInteractor : MonoBehaviour
 
     public void OnClutchStart()
     {
+        ResetThumbOrigin();
+
+        if (_isGrabbed)
+        {
+            ResetGrabOffset();
+            _cubeRotation = Quaternion.identity;
+        }
         _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
         _isClutching = true;
     }
