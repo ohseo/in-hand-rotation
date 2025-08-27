@@ -27,7 +27,7 @@ public class EvaluationSceneManager : MonoBehaviour
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
-    private const float INIT_ROTATION_DEG = 135f;
+    private const float INIT_ROTATION_DEG = 120f;
     private Vector3 _initPosition = new Vector3(0.1f, 1.1f, 0.3f);
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
@@ -39,7 +39,7 @@ public class EvaluationSceneManager : MonoBehaviour
     private float _dwellDuration, _trialDuration;
 
     private const int MAX_TRIAL_NUM = 3;
-    private int _trialNum = 0;
+    private int _trialNum = 1;
 
     private DieGrabHandler _grabHandler;
     private DieReleaseHandler _releaseHandler;
@@ -138,7 +138,7 @@ public class EvaluationSceneManager : MonoBehaviour
         if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
         {
             OnTimeout?.Invoke();
-            if (_trialNum < MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
+            if (_trialNum <= MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
             return;
         }
 
@@ -164,7 +164,7 @@ public class EvaluationSceneManager : MonoBehaviour
             if (_dwellDuration > DWELL_THRESHOLD)
             {
                 OnTrialEnd?.Invoke();
-                if (_trialNum < MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
+                if (_trialNum <= MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
             }
         }
     }
@@ -178,9 +178,7 @@ public class EvaluationSceneManager : MonoBehaviour
     private void LoadNewScene()
     {
         GenerateTarget();
-        _trialNum++;
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
-        Debug.Log("scene manager loaded new scene");
     }
 
     private void StartTrial()
@@ -188,7 +186,6 @@ public class EvaluationSceneManager : MonoBehaviour
         _isTimeout = false;
         _isInTrial = true;
         _trialDuration = 0f;
-        Debug.Log("scene manager started trial");
     }
 
     private void EndTrial()
@@ -202,6 +199,7 @@ public class EvaluationSceneManager : MonoBehaviour
         {
             _die.SetActive(false);
         }
+        _trialNum++;
     }
 
     private void ResetTrial()
@@ -213,7 +211,6 @@ public class EvaluationSceneManager : MonoBehaviour
 
     private void OnGrab()
     {
-        Debug.Log("scene manager detected grab");
         if (!_isInTrial)
         {
             OnTrialStart?.Invoke();
@@ -232,7 +229,6 @@ public class EvaluationSceneManager : MonoBehaviour
         deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
         float pError = deltaPos.magnitude;
         deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
-        // Debug.Log(string.Format("Error: {0}, {1}",pError, rError));
         return (pError < POSITION_THRESHOLD) && ((rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG));
     }
 

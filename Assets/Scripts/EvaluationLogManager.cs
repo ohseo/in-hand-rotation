@@ -99,12 +99,13 @@ public class EvaluationLogManager : MonoBehaviour
         UpdateDieData();
         UpdateHeadData();
         UpdateStatusData();
+        UpdateTrialData();
         AccumulateData();
 
         if (_evaluationSceneManager.IsInTrial)
         {
             UpdateStreamData();
-            _streamWriter.WriteLine(GenerateStreamString());//
+            _streamWriter.WriteLine(GenerateStreamString());
         }
     }
     
@@ -202,6 +203,7 @@ public class EvaluationLogManager : MonoBehaviour
         UpdateDieData();
         UpdateHeadData();
         UpdateStatusData();
+        UpdateTrialData();
 
         UpdateStreamData();
         UpdateEventData();
@@ -209,6 +211,7 @@ public class EvaluationLogManager : MonoBehaviour
 
         if (eventName.Equals("Scene Loaded"))
         {
+            ResetAccumulationData();
             CreateStreamFile();
         }
         else if (eventName.Equals("Trial End"))
@@ -266,6 +269,12 @@ public class EvaluationLogManager : MonoBehaviour
         _evaluationSceneManager.GetStatus(out _isGrabbing, out _isClutching, out _isOverlapped, out _isTimeout);
     }
 
+    public void UpdateTrialData()
+    {
+        _trialNum = _evaluationSceneManager.TrialNum;
+        _trialDuration = _evaluationSceneManager.TrialDuration;
+    }
+
     public void StorePreviousData()
     {
         _prevWristWorldPosition = _wristWorldPosition;
@@ -318,6 +327,33 @@ public class EvaluationLogManager : MonoBehaviour
 
         _totalHeadWorldTranslation += (_headWorldPosition - _prevHeadWorldPosition).magnitude;
         _totalHeadWorldRotation += ReturnAngleFromQuaternion(_headWorldRotation * Quaternion.Inverse(_prevHeadWorldRotation));
+    }
+
+    public void ResetAccumulationData()
+    {
+        _totalWristWorldTranslation = 0f; _prevWristWorldPosition = _wristWorldPosition;
+        _totalWristWorldRotation = 0f; _prevWristWorldRotation = _wristWorldRotation;
+
+        _totalThumbTipLocalTranslation = 0f; _prevThumbTipLocalPosition = _thumbTipLocalPosition;
+        _totalThumbTipLocalRotation = 0f; _prevThumbTipLocalRotation = _thumbTipLocalRotation;
+
+        _totalIndexTipLocalTranslation = 0f; _prevIndexTipLocalPosition = _indexTipLocalPosition;
+        _totalIndexTipLocalRotation = 0f; _prevIndexTipLocalRotation = _indexTipLocalRotation;
+
+        _totalMiddleTipLocalTranslation = 0f; _prevMiddleTipLocalPosition = _middleTipLocalPosition;
+        _totalMiddleTipLocalRotation = 0f; _prevMiddleTipLocalRotation = _middleTipLocalRotation;
+
+        _totalMetacarpalLocalTranslation = 0f; _prevMetacarpalLocalPosition = _metacarpalLocalPosition;
+        _totalMetacarpalLocalRotation = 0f; _prevMetacarpalLocalRotation = _metacarpalLocalRotation;
+
+        _totalDieWorldTranslation = 0f; _prevDieWorldPosition = _dieWorldPosition;
+        _totalDieWorldRotation = 0f; _prevDieWorldRotation = _dieWorldRotation;
+
+        _totalDieLocalTranslation = 0f; _prevDieLocalPosition = _dieLocalPosition;
+        _totalDieLocalRotation = 0f; _prevDieLocalRotation = _dieLocalRotation;
+
+        _totalHeadWorldTranslation = 0f; _prevHeadWorldPosition = _headWorldPosition;
+        _totalHeadWorldRotation = 0f; _prevHeadWorldRotation = _headWorldRotation;
     }
 
     private float ReturnAngleFromQuaternion(Quaternion q)
