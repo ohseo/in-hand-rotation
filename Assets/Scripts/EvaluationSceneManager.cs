@@ -35,10 +35,10 @@ public class EvaluationSceneManager : MonoBehaviour
 
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
 
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 2f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration, _trialDuration;
 
-    private const int MAX_TRIAL_NUM = 3;
+    private const int MAX_TRIAL_NUM = 20;
     private int _trialNum = 1;
 
     private DieGrabHandler _grabHandler;
