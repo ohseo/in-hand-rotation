@@ -307,29 +307,32 @@ public class EvaluationLogManager : MonoBehaviour
 
     public void AccumulateData()
     {
-        _totalWristWorldTranslation += (_wristWorldPosition - _prevWristWorldPosition).magnitude;
-        _totalWristWorldRotation += ReturnAngleFromQuaternion(_wristWorldRotation * Quaternion.Inverse(_prevWristWorldRotation));
+        if (_rotationInteractor.IsGrabbed)
+        {
+            _totalWristWorldTranslation += (_wristWorldPosition - _prevWristWorldPosition).magnitude;
+            _totalWristWorldRotation += ReturnAngleFromQuaternion(_wristWorldRotation * Quaternion.Inverse(_prevWristWorldRotation));
 
-        _totalThumbTipLocalTranslation += (_thumbTipLocalPosition - _prevThumbTipLocalPosition).magnitude;
-        _totalThumbTipLocalRotation += ReturnAngleFromQuaternion(_thumbTipLocalRotation * Quaternion.Inverse(_prevThumbTipLocalRotation));
+            _totalThumbTipLocalTranslation += (_thumbTipLocalPosition - _prevThumbTipLocalPosition).magnitude;
+            _totalThumbTipLocalRotation += ReturnAngleFromQuaternion(_thumbTipLocalRotation * Quaternion.Inverse(_prevThumbTipLocalRotation));
 
-        _totalIndexTipLocalTranslation += (_indexTipLocalPosition - _prevIndexTipLocalPosition).magnitude;
-        _totalIndexTipLocalRotation += ReturnAngleFromQuaternion(_indexTipLocalRotation * Quaternion.Inverse(_prevIndexTipLocalRotation));
+            _totalIndexTipLocalTranslation += (_indexTipLocalPosition - _prevIndexTipLocalPosition).magnitude;
+            _totalIndexTipLocalRotation += ReturnAngleFromQuaternion(_indexTipLocalRotation * Quaternion.Inverse(_prevIndexTipLocalRotation));
 
-        _totalMiddleTipLocalTranslation += (_middleTipLocalPosition - _prevMiddleTipLocalPosition).magnitude;
-        _totalMiddleTipLocalRotation += ReturnAngleFromQuaternion(_middleTipLocalRotation * Quaternion.Inverse(_prevMiddleTipLocalRotation));
+            _totalMiddleTipLocalTranslation += (_middleTipLocalPosition - _prevMiddleTipLocalPosition).magnitude;
+            _totalMiddleTipLocalRotation += ReturnAngleFromQuaternion(_middleTipLocalRotation * Quaternion.Inverse(_prevMiddleTipLocalRotation));
 
-        _totalMetacarpalLocalTranslation += (_metacarpalLocalPosition - _prevMetacarpalLocalPosition).magnitude;
-        _totalMetacarpalLocalRotation += ReturnAngleFromQuaternion(_metacarpalLocalRotation * Quaternion.Inverse(_prevMetacarpalLocalRotation));
+            _totalMetacarpalLocalTranslation += (_metacarpalLocalPosition - _prevMetacarpalLocalPosition).magnitude;
+            _totalMetacarpalLocalRotation += ReturnAngleFromQuaternion(_metacarpalLocalRotation * Quaternion.Inverse(_prevMetacarpalLocalRotation));
 
-        _totalDieWorldTranslation += (_dieWorldPosition - _prevDieWorldPosition).magnitude;
-        _totalDieWorldRotation += ReturnAngleFromQuaternion(_dieWorldRotation * Quaternion.Inverse(_prevDieWorldRotation));
+            _totalDieWorldTranslation += (_dieWorldPosition - _prevDieWorldPosition).magnitude;
+            _totalDieWorldRotation += ReturnAngleFromQuaternion(_dieWorldRotation * Quaternion.Inverse(_prevDieWorldRotation));
 
-        _totalDieLocalTranslation += (_dieLocalPosition - _prevDieLocalPosition).magnitude;
-        _totalDieLocalRotation += ReturnAngleFromQuaternion(_dieLocalRotation * Quaternion.Inverse(_prevDieLocalRotation));
+            _totalDieLocalTranslation += (_dieLocalPosition - _prevDieLocalPosition).magnitude;
+            _totalDieLocalRotation += ReturnAngleFromQuaternion(_dieLocalRotation * Quaternion.Inverse(_prevDieLocalRotation));
 
-        _totalHeadWorldTranslation += (_headWorldPosition - _prevHeadWorldPosition).magnitude;
-        _totalHeadWorldRotation += ReturnAngleFromQuaternion(_headWorldRotation * Quaternion.Inverse(_prevHeadWorldRotation));
+            _totalHeadWorldTranslation += (_headWorldPosition - _prevHeadWorldPosition).magnitude;
+            _totalHeadWorldRotation += ReturnAngleFromQuaternion(_headWorldRotation * Quaternion.Inverse(_prevHeadWorldRotation));
+        }
     }
 
     public void ResetAccumulationData()
@@ -606,7 +609,7 @@ public class EvaluationLogManager : MonoBehaviour
     
     void UpdateSummaryData()
     {
-        _summaryData["Trial"] = _trialNum;
+        _summaryData["Trial"] = _trialNum - 1;
         _summaryData["Task Completion Time"] = _taskCompletionTime;
         _summaryData["Is Timeout"] = _isTimeout;
 
