@@ -76,3 +76,5 @@ crashlytics-build.properties
 /[Aa]ssets/[Oo]culus/[Aa]udio[Mm]anager/
 /[Aa]ssets/[Oo]culus/[Ll]ip[Ss]ync/
 /[Aa]ssets/[Oo]culus/[Ss]patializer/
+
+/Assets/Videos/*.mp4
