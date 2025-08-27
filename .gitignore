@@ -78,3 +78,4 @@ crashlytics-build.properties
 /[Aa]ssets/[Oo]culus/[Ss]patializer/
 
 /Assets/Videos/*.mp4
+/Assets/Videos/*.meta
