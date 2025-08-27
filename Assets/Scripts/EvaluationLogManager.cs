@@ -81,7 +81,7 @@ public class EvaluationLogManager : MonoBehaviour
         UpdateEventData();
         UpdateStreamData();
         _filePath = CreateFilePath();
-        CreateNewFile();
+        CreateNewFiles();
     }
 
     // Update is called once per frame
@@ -110,11 +110,7 @@ public class EvaluationLogManager : MonoBehaviour
     
     void OnDestroy()
     {
-        _eventWriter.Close();
-        _eventFileStream.Close();
-
-        _summaryWriter.Close();
-        _summaryFileStream.Close();
+        CloseFiles();
     }
 
     public void SetExpConditions(int p, int condition)
@@ -130,7 +126,7 @@ public class EvaluationLogManager : MonoBehaviour
         return BASE_DIRECTORY_PATH + fileName;
     }
 
-    public bool CreateNewFile()
+    public bool CreateNewFiles()
     {
         string header;
         try
@@ -166,7 +162,6 @@ public class EvaluationLogManager : MonoBehaviour
 
     public bool CreateStreamFile()
     {
-        Debug.Log("attempt to create stream file");
         try
         {
             string streamFilePath = _filePath + $"_Trial{_trialNum}_StreamData.csv";
@@ -189,9 +184,25 @@ public class EvaluationLogManager : MonoBehaviour
         _streamFileStream.Close();
     }
 
+    public void CloseFiles()
+    {
+        _eventWriter.Close();
+        _eventFileStream.Close();
+
+        _summaryWriter.Close();
+        _summaryFileStream.Close();
+    }
+
     public void OnEvent(string eventName)
     {
         _eventName = eventName;
+
+        UpdateFingerJointsData();
+        UpdateModificationData();
+        UpdateDieData();
+        UpdateHeadData();
+        UpdateStatusData();
+
         UpdateStreamData();
         UpdateEventData();
         _eventWriter.WriteLine(GenerateEventString());
@@ -203,8 +214,8 @@ public class EvaluationLogManager : MonoBehaviour
         else if (eventName.Equals("Trial End"))
         {
             _taskCompletionTime = _trialDuration;
-            UpdateSummaryData();
             CloseStreamFile();
+            UpdateSummaryData();
             _summaryWriter.WriteLine(GenerateSummaryString());
         }
     }
@@ -312,11 +323,7 @@ public class EvaluationLogManager : MonoBehaviour
     private float ReturnAngleFromQuaternion(Quaternion q)
     {
         q.ToAngleAxis(out float angle, out _);
-        if (angle > 180f)
-        {
-            Debug.Log("Negate angle");
-            return (360f - angle);
-        }
+        if (angle > 180f) return (360f - angle);
         else return angle;
     }
 

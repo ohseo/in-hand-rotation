@@ -35,10 +35,10 @@ public class EvaluationSceneManager : MonoBehaviour
 
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
 
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 15f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 2f;
     private float _dwellDuration, _trialDuration;
 
-    private const int MAX_TRIAL_NUM = 5;
+    private const int MAX_TRIAL_NUM = 3;
     private int _trialNum = 0;
 
     private DieGrabHandler _grabHandler;
@@ -138,7 +138,7 @@ public class EvaluationSceneManager : MonoBehaviour
         if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
         {
             OnTimeout?.Invoke();
-            OnSceneLoad?.Invoke();
+            if (_trialNum < MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
             return;
         }
 
@@ -164,7 +164,7 @@ public class EvaluationSceneManager : MonoBehaviour
             if (_dwellDuration > DWELL_THRESHOLD)
             {
                 OnTrialEnd?.Invoke();
-                OnSceneLoad?.Invoke();
+                if (_trialNum < MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
             }
         }
     }
@@ -185,6 +185,7 @@ public class EvaluationSceneManager : MonoBehaviour
 
     private void StartTrial()
     {
+        _isTimeout = false;
         _isInTrial = true;
         _trialDuration = 0f;
         Debug.Log("scene manager started trial");
@@ -196,7 +197,11 @@ public class EvaluationSceneManager : MonoBehaviour
         DestroyTarget();
         _isOnTarget = false;
         _isInTrial = false;
-        _isTimeout = false;
+
+        if (_trialNum == MAX_TRIAL_NUM)
+        {
+            _die.SetActive(false);
+        }
     }
 
     private void ResetTrial()
