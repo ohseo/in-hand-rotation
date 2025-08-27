@@ -93,17 +93,17 @@ public class EvaluationLogManager : MonoBehaviour
         _trialNum = _evaluationSceneManager.TrialNum;
         _trialDuration = _evaluationSceneManager.TrialDuration;
 
-        StorePreviousData();
         UpdateFingerJointsData();
         UpdateModificationData();
         UpdateDieData();
         UpdateHeadData();
         UpdateStatusData();
         UpdateTrialData();
-        AccumulateData();
 
         if (_evaluationSceneManager.IsInTrial)
         {
+            AccumulateData();
+            StorePreviousData();
             UpdateStreamData();
             _streamWriter.WriteLine(GenerateStreamString());
         }
@@ -211,7 +211,6 @@ public class EvaluationLogManager : MonoBehaviour
 
         if (eventName.Equals("Scene Loaded"))
         {
-            ResetAccumulationData();
             CreateStreamFile();
         }
         else if (eventName.Equals("Trial End"))
@@ -220,6 +219,10 @@ public class EvaluationLogManager : MonoBehaviour
             CloseStreamFile();
             UpdateSummaryData();
             _summaryWriter.WriteLine(GenerateSummaryString());
+        }
+        else if (eventName.Equals("Trial Start"))
+        {
+            ResetAccumulationData();
         }
     }
 
