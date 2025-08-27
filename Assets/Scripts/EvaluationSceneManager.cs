@@ -33,18 +33,19 @@ public class EvaluationSceneManager : MonoBehaviour
     private Quaternion _targetOffsetRotation;
     private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
 
-    private bool _isOverlapped = false, _isTimeout = false, _isInTrial = false;
+    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
 
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 20f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 15f;
     private float _dwellDuration, _trialDuration;
 
-    private const int MAX_TRIAL_NUM = 15;
+    private const int MAX_TRIAL_NUM = 5;
     private int _trialNum = 0;
 
     private DieGrabHandler _grabHandler;
     private DieReleaseHandler _releaseHandler;
 
-    public event Action OnOverlap, OnDepart, OnTrialEnd, OnTrialStart, OnTrialReset, OnSceneLoad;
+    public event Action OnTrialEnd, OnTrialStart, OnTrialReset, OnSceneLoad, OnTarget, OffTarget, OnTimeout;
+    public event Action<string> OnEvent;
 
 
     void Awake()
@@ -66,25 +67,59 @@ public class EvaluationSceneManager : MonoBehaviour
     void Start()
     {
         _grabHandler = _die.GetComponentInChildren<DieGrabHandler>();
-
-        OnSceneLoad += LoadNewScene;
-        OnSceneLoad += _logManager.OnSceneLoad;
-
-        _grabHandler.OnGrab += _rotationInteractor.OnGrab;
-        _grabHandler.OnGrab += StartTrial;
-        _grabHandler.OnTarget += _rotationInteractor.OnTarget;
-        _grabHandler.OffTarget += _rotationInteractor.OffTarget;
         _releaseHandler = _die.GetComponentInChildren<DieReleaseHandler>();
-        _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
-        OnOverlap += _rotationInteractor.OnOverlap;
-        OnDepart += _rotationInteractor.OnDepart;
 
+        // all events
+        OnEvent += _logManager.OnEvent;
+
+        // scene load
+        OnSceneLoad += LoadNewScene;
+        OnSceneLoad += () => { OnEvent?.Invoke("Scene Loaded"); };
+
+        // trial start
+        OnTrialStart += StartTrial;
+        OnTrialStart += () => { OnEvent?.Invoke("Trial Start"); };
+
+        // trial end
         OnTrialEnd += EndTrial;
         OnTrialEnd += _rotationInteractor.Reset;
-        OnTrialEnd += _logManager.OnTrialEnd;
+        OnTrialEnd += () => { OnEvent?.Invoke("Trial End"); };
 
+        // trial reset
         OnTrialReset += ResetTrial;
         OnTrialReset += _rotationInteractor.Reset;
+        OnTrialReset += () => { OnEvent?.Invoke("Trial Reset"); };
+
+        // grab
+        _grabHandler.OnGrab += OnGrab;
+        _grabHandler.OnGrab += _rotationInteractor.OnGrab;
+        _grabHandler.OnGrab += () => { OnEvent?.Invoke("Grab"); };
+
+        // release
+        _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
+        _releaseHandler.OnRelease += () => { OnEvent?.Invoke("Release"); };
+
+        // clutch start
+        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
+        _rotationInteractor.OnClutchStart += () => { OnEvent?.Invoke("Clutch Start"); };
+
+        // clutch end
+        _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
+        _rotationInteractor.OnClutchEnd += () => { OnEvent?.Invoke("Clutch End"); };
+
+        // on target
+        OnTarget += _rotationInteractor.OnTarget;
+        OnTarget += _releaseHandler.OnTarget;
+        OnTarget += () => { OnEvent?.Invoke("On Target"); };
+
+        // off target
+        OffTarget += _rotationInteractor.OffTarget;
+        OffTarget += _releaseHandler.OffTarget;
+        OffTarget += () => { OnEvent?.Invoke("Off Target"); };
+
+        // timeout
+        OnTimeout += Timeout;
+        OnTimeout += () => { OnEvent?.Invoke("Timed Out"); };
 
         OnSceneLoad?.Invoke();
     }
@@ -98,26 +133,32 @@ public class EvaluationSceneManager : MonoBehaviour
             return;
         }
 
+        _trialDuration += Time.deltaTime;
+
         if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
         {
-            OnTrialEnd?.Invoke();
+            OnTimeout?.Invoke();
+            OnSceneLoad?.Invoke();
+            return;
         }
+
+        if (!_isInTrial) return;
 
         bool _isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
 
-        if (_isErrorSmall && !_isOverlapped)
+        if (_isErrorSmall && !_isOnTarget)
         {
             _dwellDuration = 0f;
-            _isOverlapped = true;
-            OnOverlap?.Invoke();
+            _isOnTarget = true;
+            OnTarget?.Invoke();
         }
-        else if (!_isErrorSmall && _isOverlapped)
+        else if (!_isErrorSmall && _isOnTarget)
         {
-            _isOverlapped = false;
-            OnDepart?.Invoke();
+            _isOnTarget = false;
+            OffTarget?.Invoke();
         }
 
-        if (_isOverlapped)
+        if (_isOnTarget)
         {
             _dwellDuration += Time.deltaTime;
             if (_dwellDuration > DWELL_THRESHOLD)
@@ -130,7 +171,6 @@ public class EvaluationSceneManager : MonoBehaviour
 
     void OnDestroy()
     {
-        _logManager.CloseStreamFile();
         DestroyTarget();
         DestroyDie();
     }
@@ -140,35 +180,50 @@ public class EvaluationSceneManager : MonoBehaviour
         GenerateTarget();
         _trialNum++;
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+        Debug.Log("scene manager loaded new scene");
     }
 
     private void StartTrial()
     {
-        if (!_isInTrial)
-        {
-            _isInTrial = true;
-            _trialDuration = 0f;
-        }
+        _isInTrial = true;
+        _trialDuration = 0f;
+        Debug.Log("scene manager started trial");
     }
 
     private void EndTrial()
     {
         ResetDie();
         DestroyTarget();
-        _isOverlapped = false;
+        _isOnTarget = false;
         _isInTrial = false;
+        _isTimeout = false;
     }
 
     private void ResetTrial()
     {
         ResetDie();
-        _isOverlapped = false;
+        _isOnTarget = false;
         _trialDuration = 0f;
+    }
+
+    private void OnGrab()
+    {
+        Debug.Log("scene manager detected grab");
+        if (!_isInTrial)
+        {
+            OnTrialStart?.Invoke();
+        }
+    }
+
+    private void Timeout()
+    {
+        _isTimeout = true;
+        OnTrialEnd?.Invoke();
     }
 
     public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)
     {
-        deltaPos = _target.transform.position - _die.transform.position;
+        deltaPos = _target.transform.position - _die.transform.position; //
         deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
         float pError = deltaPos.magnitude;
         deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
@@ -232,7 +287,7 @@ public class EvaluationSceneManager : MonoBehaviour
     {
         isGrabbing = _rotationInteractor.IsGrabbed;
         isClutching = _rotationInteractor.IsClutching;
-        isOverlapped = _isOverlapped;
+        isOverlapped = _isOnTarget;
         isTimeout = _isTimeout;
     }
 

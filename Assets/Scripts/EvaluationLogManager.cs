@@ -69,8 +69,9 @@ public class EvaluationLogManager : MonoBehaviour
     private string _eventName;
     private float _taskCompletionTime, _trialDuration;
 
-    private string[] _eventNames = new string[11] { "Scene Loaded", "Trial Start", "Grab", "Release", "Clutch Start", "Clutch End",
-                                                  "Overlapped", "Departed", "Timed Out", "Trial End", "Trial Reset" };
+    private string[] _eventNames = new string[11] { "Scene Loaded", "Trial Start", "Trial End", "Trial Reset",
+                                                    "Grab", "Release", "Clutch Start", "Clutch End",
+                                                    "On Target", "Off Target", "Timed Out"};
 
 
     // Start is called before the first frame update
@@ -89,18 +90,21 @@ public class EvaluationLogManager : MonoBehaviour
         DateTimeOffset dt = new DateTimeOffset(DateTime.Now);
         _timeStamp = dt.ToUnixTimeMilliseconds();
         
+        _trialNum = _evaluationSceneManager.TrialNum;
+        _trialDuration = _evaluationSceneManager.TrialDuration;
+
+        StorePreviousData();
         UpdateFingerJointsData();
         UpdateModificationData();
         UpdateDieData();
         UpdateHeadData();
         UpdateStatusData();
-        _trialNum = _evaluationSceneManager.TrialNum;
-        _trialDuration = _evaluationSceneManager.TrialDuration;
+        AccumulateData();
 
         if (_evaluationSceneManager.IsInTrial)
         {
             UpdateStreamData();
-            _streamWriter.WriteLine(GenerateStreamString());
+            _streamWriter.WriteLine(GenerateStreamString());//
         }
     }
 
@@ -166,6 +170,7 @@ public class EvaluationLogManager : MonoBehaviour
 
     public bool CreateStreamFile()
     {
+        Debug.Log("attempt to create stream file");
         try
         {
             string streamFilePath = _filePath + $"_Trial{_trialNum}_StreamData.csv";
@@ -184,63 +189,28 @@ public class EvaluationLogManager : MonoBehaviour
 
     public void CloseStreamFile()
     {
-        _streamWriter.Flush();
         _streamWriter.Close();
         _streamFileStream.Close();
     }
 
-    public void OnSceneLoad()
+    public void OnEvent(string eventName)
     {
-        _eventName = _eventNames[0];
+        _eventName = eventName;
+        UpdateStreamData();
         UpdateEventData();
         _eventWriter.WriteLine(GenerateEventString());
-        UpdateStreamData();
-        CreateStreamFile();
-    }
 
-    public void OnTrialStart()
-    {
-
-    }
-
-    public void OnTrialEnd()
-    {
-        CloseStreamFile();
-        UpdateSummaryData();
-        _summaryWriter.WriteLine(GenerateSummaryString());
-    }
-
-    public void OnTrialReset()
-    {
-
-    }
-    public void OnGrab()
-    {
-
-    }
-    public void OnRelease()
-    {
-
-    }
-    public void OnClutchStart()
-    {
-
-    }
-    public void OnClutchEnd()
-    {
-
-    }
-    public void OnOverlap()
-    {
-
-    }
-    public void OnDepart()
-    {
-
-    }
-    public void OnTimeout()
-    {
-
+        if (eventName.Equals("Scene Loaded"))
+        {
+            CreateStreamFile();
+        }
+        else if (eventName.Equals("Trial End"))
+        {
+            _taskCompletionTime = _trialDuration;
+            UpdateSummaryData();
+            CloseStreamFile();
+            _summaryWriter.WriteLine(GenerateSummaryString());
+        }
     }
 
     public void UpdateFingerJointsData()
@@ -558,7 +528,6 @@ public class EvaluationLogManager : MonoBehaviour
         _streamData["Is Grabbing"] = _isGrabbing;
         _streamData["Is Clutching"] = _isClutching;
         _streamData["Is Overlapped"] = _isOverlapped;
-        _streamData["Is Timeout"] = _isTimeout;
     }
 
     void UpdateEventData()
@@ -597,6 +566,7 @@ public class EvaluationLogManager : MonoBehaviour
     {
         _summaryData["Trial"] = _trialNum;
         _summaryData["Task Completion Time"] = _taskCompletionTime;
+        _summaryData["Is Timeout"] = _isTimeout;
 
         //final offset
         _summaryData["Target Offset Position X"] = _targetOffsetPosition.x;

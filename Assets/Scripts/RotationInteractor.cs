@@ -24,7 +24,7 @@ public class RotationInteractor : MonoBehaviour
 
     private LineRenderer _lineRenderer;
 
-    private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false, _isOverlapped = false;
+    private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false;
     private int _transferFunction = 0; // 0: Baseline, 1: linear, 2: accelerating(power), 3: decelerating(hyperbolic tangent)
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
@@ -50,6 +50,8 @@ public class RotationInteractor : MonoBehaviour
 
     private bool _isCentroidCentered = false;
     private GameObject _centroidSphere;
+
+    public event Action OnClutchStart, OnClutchEnd;
 
     void Awake()
     {
@@ -121,8 +123,8 @@ public class RotationInteractor : MonoBehaviour
         else
         {
             if (!Input.anyKey) _isReset = false;
-            if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd();
-            if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart();
+            if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd?.Invoke();
+            if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart?.Invoke();
             if (Input.anyKey && !_isClutching) ResetThumbOrigin();
         }
 
@@ -200,11 +202,10 @@ public class RotationInteractor : MonoBehaviour
 
     public void Reset()
     {
+        OffTarget();
+        EndClutching();
+        OnRelease();
         InitGeometry();
-        IsGrabbed = false;
-        IsClutching = false;
-        IsOnTarget = false;
-        IsOverlapped = false;
     }
 
     private void ResetThumbOrigin()
@@ -520,11 +521,13 @@ public class RotationInteractor : MonoBehaviour
     public void OnTarget()
     {
         _isOnTarget = true;
+        _outline.OutlineColor = Color.green;
     }
 
     public void OffTarget()
     {
         _isOnTarget = false;
+        _outline.OutlineColor = Color.blue;
     }
 
     public void OnRelease()
@@ -535,19 +538,7 @@ public class RotationInteractor : MonoBehaviour
         _outline.enabled = false;
     }
 
-    public void OnOverlap()
-    {
-        _isOverlapped = true;
-        _outline.OutlineColor = Color.green;
-    }
-
-    public void OnDepart()
-    {
-        _isOverlapped = false;
-        _outline.OutlineColor = Color.blue;
-    }
-
-    public void OnClutchStart()
+    public void StartClutching()
     {
         ResetThumbOrigin();
 
@@ -560,7 +551,7 @@ public class RotationInteractor : MonoBehaviour
         _isClutching = true;
     }
 
-    public void OnClutchEnd()
+    public void EndClutching()
     {
         _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
         _isClutching = false;
@@ -582,19 +573,5 @@ public class RotationInteractor : MonoBehaviour
     {
         get { return _isOnTarget; }
         set { _isOnTarget = value; }
-    }
-
-    public bool IsOverlapped
-    {
-        get { return _isOverlapped; }
-        set
-        {
-            if (_isOverlapped != value)
-            {
-                _isOverlapped = value;
-                if (_isOverlapped) _outline.OutlineColor = Color.green;
-                else _outline.OutlineColor = Color.blue;
-            }
-        }
-    }
+    }    
 }
