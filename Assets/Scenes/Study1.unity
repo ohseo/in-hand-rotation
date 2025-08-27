@@ -5863,6 +5863,52 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1225751309}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1221975865
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1221975867}
+  - component: {fileID: 1221975866}
+  m_Layer: 0
+  m_Name: EvaluationLogManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1221975866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1221975865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 776c9127b7d7f6745a607d361079a16b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _rotationInteractor: {fileID: 94333789}
+  _evaluationSceneManager: {fileID: 1728467032}
+--- !u!4 &1221975867
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1221975865}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1225751308
 GameObject:
   m_ObjectHideFlags: 0
@@ -7933,16 +7979,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5aa15ed04f087674db985777903eef12, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _rotationInteractor: {fileID: 94333789}
+  _participantNum: 0
+  _expCondition: 1
+  _isLeftHanded: 0
   _diePrefab: {fileID: 1016349629435091919, guid: 1cf35a6e9e670d042992bbae2273f70c, type: 3}
   _targetPrefab: {fileID: 1618645656371774453, guid: 9dd4e15a530376848b3093ec97b91b12, type: 3}
-  _text: {fileID: 565504827}
-  _expCondition: 0
-  _isLeftHanded: 0
   _ovrRightSkeleton: {fileID: 643088644}
   _ovrLeftSkeleton: {fileID: 750940862}
-  _grabHandler: {fileID: 0}
-  _releaseHandler: {fileID: 0}
+  _centerEyeAnchor: {fileID: 2139425078}
+  _text: {fileID: 565504827}
+  _rotationInteractor: {fileID: 94333789}
+  _logManager: {fileID: 1221975866}
 --- !u!4 &1728467033
 Transform:
   m_ObjectHideFlags: 0
@@ -10839,6 +10886,7 @@ SceneRoots:
   - {fileID: 2028397337}
   - {fileID: 2126774104}
   - {fileID: 1728467033}
+  - {fileID: 1221975867}
   - {fileID: 94333790}
   - {fileID: 854956794}
   - {fileID: 1100874364}

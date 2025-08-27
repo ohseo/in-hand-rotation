@@ -76,7 +76,11 @@ public class EvaluationLogManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-
+        UpdateSummaryData();
+        UpdateEventData();
+        UpdateStreamData();
+        _filePath = CreateFilePath();
+        CreateNewFile();
     }
 
     // Update is called once per frame
@@ -84,6 +88,24 @@ public class EvaluationLogManager : MonoBehaviour
     {
         DateTimeOffset dt = new DateTimeOffset(DateTime.Now);
         _timeStamp = dt.ToUnixTimeMilliseconds();
+        
+        UpdateFingerJointsData();
+        UpdateModificationData();
+        UpdateDieData();
+        UpdateHeadData();
+        UpdateStatusData();
+        _trialNum = _evaluationSceneManager.TrialNum;
+        _trialDuration = _evaluationSceneManager.TrialDuration;
+
+        if (_evaluationSceneManager.IsInTrial)
+        {
+            UpdateStreamData();
+            _streamWriter.WriteLine(GenerateStreamString());
+        }
+    }
+
+    public void Init()
+    {
     }
 
     void OnDestroy()
@@ -95,11 +117,10 @@ public class EvaluationLogManager : MonoBehaviour
         _summaryFileStream.Close();
     }
 
-    public void Init()
+    public void SetExpConditions(int p, int condition)
     {
-        //participant num
-        //condition num
-        CreateNewFile();
+        _participantNum = p;
+        _expCondition = condition;
     }
 
     public string CreateFilePath()
@@ -111,13 +132,14 @@ public class EvaluationLogManager : MonoBehaviour
 
     public bool CreateNewFile()
     {
-        _filePath = CreateFilePath();
-
+        string header;
         try
         {
             string eventFilePath = _filePath + "_EventLog.csv";
             _eventFileStream = new FileStream(eventFilePath, FileMode.Create, FileAccess.Write);
             _eventWriter = new StreamWriter(_eventFileStream, System.Text.Encoding.UTF8);
+            header = string.Join(",", new List<string>(_eventData.Keys));
+            _eventWriter.WriteLine(header);
         }
         catch (System.IO.IOException e)
         {
@@ -130,6 +152,8 @@ public class EvaluationLogManager : MonoBehaviour
             string summaryFilePath = _filePath + "_Summary.csv";
             _summaryFileStream = new FileStream(summaryFilePath, FileMode.Create, FileAccess.Write);
             _summaryWriter = new StreamWriter(_summaryFileStream, System.Text.Encoding.UTF8);
+            header = string.Join(",", new List<string>(_summaryData.Keys));
+            _summaryWriter.WriteLine(header);
         }
         catch (System.IO.IOException e)
         {
@@ -138,6 +162,85 @@ public class EvaluationLogManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    public bool CreateStreamFile()
+    {
+        try
+        {
+            string streamFilePath = _filePath + $"_Trial{_trialNum}_StreamData.csv";
+            _streamFileStream = new FileStream(streamFilePath, FileMode.Create, FileAccess.Write);
+            _streamWriter = new StreamWriter(_streamFileStream, System.Text.Encoding.UTF8);
+            string header = string.Join(",", new List<string>(_streamData.Keys));
+            _streamWriter.WriteLine(header);
+        }
+        catch (System.IO.IOException e)
+        {
+            Debug.LogError("Failed to create stream file. " + e.Message);
+            return false;
+        }
+        return true;
+    }
+
+    public void CloseStreamFile()
+    {
+        _streamWriter.Flush();
+        _streamWriter.Close();
+        _streamFileStream.Close();
+    }
+
+    public void OnSceneLoad()
+    {
+        _eventName = _eventNames[0];
+        UpdateEventData();
+        _eventWriter.WriteLine(GenerateEventString());
+        UpdateStreamData();
+        CreateStreamFile();
+    }
+
+    public void OnTrialStart()
+    {
+
+    }
+
+    public void OnTrialEnd()
+    {
+        CloseStreamFile();
+        UpdateSummaryData();
+        _summaryWriter.WriteLine(GenerateSummaryString());
+    }
+
+    public void OnTrialReset()
+    {
+
+    }
+    public void OnGrab()
+    {
+
+    }
+    public void OnRelease()
+    {
+
+    }
+    public void OnClutchStart()
+    {
+
+    }
+    public void OnClutchEnd()
+    {
+
+    }
+    public void OnOverlap()
+    {
+
+    }
+    public void OnDepart()
+    {
+
+    }
+    public void OnTimeout()
+    {
+
     }
 
     public void UpdateFingerJointsData()
@@ -252,9 +355,43 @@ public class EvaluationLogManager : MonoBehaviour
     }
 
 
+    public string GenerateStreamString()
+    {
+        var values = new List<string>();
+        foreach (string key in _streamData.Keys)
+        {
+            object value = _streamData[key];
+            values.Add(value.ToString());
+        }
+        return string.Join(",", values);
+    }
+
+    public string GenerateEventString()
+    {
+        var values = new List<string>();
+        foreach (string key in _eventData.Keys)
+        {
+            object value = _eventData[key];
+            values.Add(value.ToString());
+        }
+
+        return string.Join(",", values);
+    }
+
+    public string GenerateSummaryString()
+    {
+        var values = new List<string>();
+        foreach (string key in _summaryData.Keys)
+        {
+            object value = _summaryData[key];
+            values.Add(value.ToString());
+        }
+
+        return string.Join(",", values);
+    }
+
     void UpdateStreamData()
     {
-        _streamData["Trial"] = _trialNum;
         _streamData["Timestamp"] = _timeStamp;
         _streamData["Trial Duration"] = _trialDuration;
 
@@ -454,38 +591,6 @@ public class EvaluationLogManager : MonoBehaviour
         _eventData["Target Offset Rotation Y"] = _targetOffsetRotation.y;
         _eventData["Target Offset Rotation Z"] = _targetOffsetRotation.z;
         _eventData["Target Offset Rotation W"] = _targetOffsetRotation.w;
-
-        _eventData["Head World Position X"] = _headWorldPosition.x;
-        _eventData["Head World Position Y"] = _headWorldPosition.y;
-        _eventData["Head World Position Z"] = _headWorldPosition.z;
-        _eventData["Head World Rotation X"] = _headWorldRotation.x;
-        _eventData["Head World Rotation Y"] = _headWorldRotation.y;
-        _eventData["Head World Rotation Z"] = _headWorldRotation.z;
-        _eventData["Head World Rotation W"] = _headWorldRotation.w;
-
-        _eventData["Total Wrist World Translation"] = _totalWristWorldTranslation;
-        _eventData["Total Wrist World Rotation"] = _totalWristWorldRotation;
-
-        _eventData["Total Thumb Local Translation"] = _totalThumbTipLocalTranslation;
-        _eventData["Total Thumb Local Rotation"] = _totalThumbTipLocalRotation;
-
-        _eventData["Total Index Local Translation"] = _totalIndexTipLocalTranslation;
-        _eventData["Total Index Local Rotation"] = _totalIndexTipLocalRotation;
-
-        _eventData["Total Middle Local Translation"] = _totalMiddleTipLocalTranslation;
-        _eventData["Total Middle Local Rotation"] = _totalMiddleTipLocalRotation;
-
-        _eventData["Total Metacarpal Local Translation"] = _totalMetacarpalLocalTranslation;
-        _eventData["Total Metacarpal Local Rotation"] = _totalMetacarpalLocalRotation;
-
-        _eventData["Total Die World Translation"] = _totalDieWorldTranslation;
-        _eventData["Total Die World Rotation"] = _totalDieWorldRotation;
-
-        _eventData["Total Die Local Translation"] = _totalDieLocalTranslation;
-        _eventData["Total Die Local Rotation"] = _totalDieLocalRotation;
-
-        _eventData["Total Head World Translation"] = _totalHeadWorldTranslation;
-        _eventData["Total Head World Rotation"] = _totalHeadWorldRotation;
     }
     
     void UpdateSummaryData()

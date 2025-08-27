@@ -7,19 +7,23 @@ using TMPro;
 public class EvaluationSceneManager : MonoBehaviour
 {
     [SerializeField]
-    private RotationInteractor _rotationInteractor;
-    [SerializeField]
-    private GameObject _diePrefab, _targetPrefab;
-    [SerializeField]
-    protected TextMeshProUGUI _text;
+    private int _participantNum;
     [SerializeField]
     private int _expCondition = 0; // 0: Baseline, 1: Linear, 2: Power, 3: Tanh
     [SerializeField]
     private bool _isLeftHanded = false;
     [SerializeField]
+    private GameObject _diePrefab, _targetPrefab;
+    [SerializeField]
     private OVRSkeleton _ovrRightSkeleton, _ovrLeftSkeleton;
     [SerializeField]
     private GameObject _centerEyeAnchor;
+    [SerializeField]
+    protected TextMeshProUGUI _text;
+    [SerializeField]
+    private RotationInteractor _rotationInteractor;
+    [SerializeField]
+    private EvaluationLogManager _logManager;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
@@ -35,17 +39,16 @@ public class EvaluationSceneManager : MonoBehaviour
     private float _dwellDuration, _trialDuration;
 
     private const int MAX_TRIAL_NUM = 15;
-    private int _trialNum = 1;
+    private int _trialNum = 0;
 
     private DieGrabHandler _grabHandler;
     private DieReleaseHandler _releaseHandler;
 
-    public event Action OnOverlap, OnDepart, OnTrialEnd, OnTrialStart, OnTrialReset;
+    public event Action OnOverlap, OnDepart, OnTrialEnd, OnTrialStart, OnTrialReset, OnSceneLoad;
 
 
     void Awake()
     {
-        GenerateTarget();
         GenerateDie();
         _rotationInteractor.SetCube(_die);
 
@@ -55,12 +58,18 @@ public class EvaluationSceneManager : MonoBehaviour
         _rotationInteractor.SetTransferFunction(_expCondition);
 
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+
+        _logManager.SetExpConditions(_participantNum, _expCondition);
     }
 
     // Start is called before the first frame update
     void Start()
     {
         _grabHandler = _die.GetComponentInChildren<DieGrabHandler>();
+
+        OnSceneLoad += LoadNewScene;
+        OnSceneLoad += _logManager.OnSceneLoad;
+
         _grabHandler.OnGrab += _rotationInteractor.OnGrab;
         _grabHandler.OnGrab += StartTrial;
         _grabHandler.OnTarget += _rotationInteractor.OnTarget;
@@ -69,10 +78,15 @@ public class EvaluationSceneManager : MonoBehaviour
         _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
         OnOverlap += _rotationInteractor.OnOverlap;
         OnDepart += _rotationInteractor.OnDepart;
+
         OnTrialEnd += EndTrial;
         OnTrialEnd += _rotationInteractor.Reset;
+        OnTrialEnd += _logManager.OnTrialEnd;
+
         OnTrialReset += ResetTrial;
         OnTrialReset += _rotationInteractor.Reset;
+
+        OnSceneLoad?.Invoke();
     }
 
     // Update is called once per frame
@@ -109,9 +123,16 @@ public class EvaluationSceneManager : MonoBehaviour
             if (_dwellDuration > DWELL_THRESHOLD)
             {
                 OnTrialEnd?.Invoke();
-                LoadNewScene();
+                OnSceneLoad?.Invoke();
             }
         }
+    }
+
+    void OnDestroy()
+    {
+        _logManager.CloseStreamFile();
+        DestroyTarget();
+        DestroyDie();
     }
 
     private void LoadNewScene()
@@ -213,5 +234,23 @@ public class EvaluationSceneManager : MonoBehaviour
         isClutching = _rotationInteractor.IsClutching;
         isOverlapped = _isOverlapped;
         isTimeout = _isTimeout;
+    }
+
+    public bool IsInTrial
+    {
+        get { return _isInTrial; }
+        set { _isInTrial = value; }
+    }
+
+    public int TrialNum
+    {
+        get { return _trialNum; }
+        set { _trialNum = value; }
+    }
+
+    public float TrialDuration
+    {
+        get { return _trialDuration; }
+        set { _trialDuration = value; }
     }
 }
