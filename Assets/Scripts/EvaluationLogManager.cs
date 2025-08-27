@@ -107,11 +107,7 @@ public class EvaluationLogManager : MonoBehaviour
             _streamWriter.WriteLine(GenerateStreamString());//
         }
     }
-
-    public void Init()
-    {
-    }
-
+    
     void OnDestroy()
     {
         _eventWriter.Close();

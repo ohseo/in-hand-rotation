@@ -8,7 +8,6 @@ public class DieReleaseHandler : MonoBehaviour
     private int spheresInContact = 0;
     private RotationInteractor _rotationInteractor;
     private float _releaseScale = 1.5f;
-    private bool _isOnTarget = false;
 
     public event Action OnRelease;
     // Start is called before the first frame update
