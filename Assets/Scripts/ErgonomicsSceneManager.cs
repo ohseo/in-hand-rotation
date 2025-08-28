@@ -30,7 +30,7 @@ public class ErgonomicsSceneManager : MonoBehaviour
     private const float INIT_ROTATION_DEG = 90f;
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
-    private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 10f;
+    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 10f;
 
     private Vector3 _wristWorldPosition, _wristReferenceWorldPosition, _wristOffsetPosition;
     private Quaternion _wristWorldRotation, _wristReferenceWorldRotation, _wristOffsetRotation;
@@ -56,6 +56,8 @@ public class ErgonomicsSceneManager : MonoBehaviour
 
     private Dictionary<int, (float entity1, float entity2)> _wristRotationThresholds = new Dictionary<int, (float, float)>();
 
+    private Dictionary<KeyCode, Action> _keyActions;
+
     private GameObject _warningSphere;
 
     void Awake()
@@ -70,9 +72,9 @@ public class ErgonomicsSceneManager : MonoBehaviour
         _gridPositions.Add(8, new Vector3(0f, 1f, 0.3f));
         _gridPositions.Add(9, new Vector3(0.1f, 1f, 0.3f));
 
-        _wristRotationThresholds.Add(0, (0f, 60f)); // palmar
+        _wristRotationThresholds.Add(0, (105f, 165f)); // palmar
         _wristRotationThresholds.Add(1, (60f, 120f)); // radial
-        _wristRotationThresholds.Add(2, (120f, 180f)); // dorsal
+        _wristRotationThresholds.Add(2, (15f, 75f)); // dorsal
 
         GenerateDie();
         _rotationInteractor.SetCube(_die);
@@ -145,8 +147,15 @@ public class ErgonomicsSceneManager : MonoBehaviour
         ResetDie();
 
         _warningSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        _warningSphere.transform.localScale = new Vector3(0.04f, 0.04f, 0.04f);
+        _warningSphere.transform.localScale = new Vector3(0.03f, 0.03f, 0.03f);
         _warningSphere.GetComponent<Collider>().enabled = false;
+
+        _keyActions = new Dictionary<KeyCode, Action>
+        {
+            {KeyCode.P, () => _expCondition = 0},
+            {KeyCode.R, () => _expCondition = 1},
+            {KeyCode.D, () => _expCondition = 2}
+        };
     }
 
     // Update is called once per frame
@@ -275,7 +284,7 @@ public class ErgonomicsSceneManager : MonoBehaviour
 
     private void ResetDie()
     {
-        _die.transform.position = _gridPositions[_gridNumbers[_setNum]];
+        _die.transform.position = _gridPositions[_gridNumbers[_setNum - 1]];
         _die.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
         _die.transform.rotation = Quaternion.identity;
     }
@@ -285,7 +294,7 @@ public class ErgonomicsSceneManager : MonoBehaviour
         _target = Instantiate(_targetPrefab);
         Vector3 axis = UnityEngine.Random.onUnitSphere;
         _target.transform.Rotate(axis.normalized, INIT_ROTATION_DEG);
-        _target.transform.position = _gridPositions[_gridNumbers[_setNum]];
+        _target.transform.position = _gridPositions[_gridNumbers[_setNum - 1]];
         _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
     }
 

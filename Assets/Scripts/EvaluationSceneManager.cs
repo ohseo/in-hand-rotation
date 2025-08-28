@@ -144,15 +144,15 @@ public class EvaluationSceneManager : MonoBehaviour
 
         if (!_isInTrial) return;
 
-        bool _isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
+        bool isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
 
-        if (_isErrorSmall && !_isOnTarget)
+        if (isErrorSmall && !_isOnTarget)
         {
             _dwellDuration = 0f;
             _isOnTarget = true;
             OnTarget?.Invoke();
         }
-        else if (!_isErrorSmall && _isOnTarget)
+        else if (!isErrorSmall && _isOnTarget)
         {
             _isOnTarget = false;
             OffTarget?.Invoke();
