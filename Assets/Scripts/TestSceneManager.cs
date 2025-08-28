@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.Video;
 
 public class TestSceneManager : MonoBehaviour
 {
@@ -18,6 +19,12 @@ public class TestSceneManager : MonoBehaviour
     private GameObject _centerEyeAnchor;
     [SerializeField]
     private RotationInteractor _rotationInteractor;
+
+    [SerializeField]
+    private VideoPlayer _player;
+
+    [SerializeField]
+    private VideoClip[] videoClips;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
@@ -112,6 +119,13 @@ public class TestSceneManager : MonoBehaviour
         OnSceneLoad?.Invoke();
     }
 
+    private void SetVideo(int videoIndex)
+    {
+        _player.clip = videoClips[videoIndex];
+        _player.time = 0f;
+        _player.Play();
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -119,6 +133,23 @@ public class TestSceneManager : MonoBehaviour
         {
             OnTrialReset?.Invoke();
             return;
+        }
+
+        if (Input.GetKey(KeyCode.Alpha1))
+        {
+            SetVideo(0);
+        }
+        else if (Input.GetKey(KeyCode.Alpha2))
+        {
+            SetVideo(1);
+
+        }else if (Input.GetKey(KeyCode.Alpha3))
+        {
+            SetVideo(2);
+
+        }else if (Input.GetKey(KeyCode.Alpha4))
+        {
+            SetVideo(3);
         }
 
         _trialDuration += Time.deltaTime;
