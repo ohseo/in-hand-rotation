@@ -3407,10 +3407,10 @@ MonoBehaviour:
   _rotationInteractor: {fileID: 94333789}
   _player: {fileID: 394182378}
   videoClips:
-  - {fileID: 32900000, guid: 009936f96a11ee14c931f10f4a98319a, type: 3}
-  - {fileID: 32900000, guid: 0242b4f25472e784e8a70a767434d890, type: 3}
-  - {fileID: 32900000, guid: 65f6080f7ca38304997b4f5ec1d44ed9, type: 3}
-  - {fileID: 32900000, guid: 5d5f87ac682ad464e82fe1d1903f1677, type: 3}
+  - {fileID: 32900000, guid: a3ac1798c60bebd438bb4a42dde8abbf, type: 3}
+  - {fileID: 32900000, guid: dee08511a50ba8941b93c0109cd5bc01, type: 3}
+  - {fileID: 32900000, guid: 55c1db832549ce84db2f4467db1a3a1d, type: 3}
+  - {fileID: 32900000, guid: 14371e86e6459f44a88bdc0fce0f283a, type: 3}
 --- !u!1 &651544060
 GameObject:
   m_ObjectHideFlags: 0

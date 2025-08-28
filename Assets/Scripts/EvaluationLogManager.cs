@@ -16,7 +16,7 @@ public class EvaluationLogManager : MonoBehaviour
     private int _expCondition { get; set; }
 
     private string _filePath;
-    private const string BASE_DIRECTORY_PATH = "C:/Users/SEOHYUNSEO/Desktop/Data/";
+    private const string BASE_DIRECTORY_PATH = "D:/Data/";
 
     private FileStream _streamFileStream, _eventFileStream, _summaryFileStream;
     private StreamWriter _streamWriter, _eventWriter, _summaryWriter;
