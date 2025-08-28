@@ -27,7 +27,7 @@ public class EvaluationSceneManager : MonoBehaviour
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
-    private const float INIT_ROTATION_DEG = 120f;
+    private const float INIT_ROTATION_DEG = 135f;
     private Vector3 _initPosition = new Vector3(0.1f, 1.1f, 0.3f);
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
