@@ -398,6 +398,11 @@ public class RotationInteractor : MonoBehaviour
         rotation = _wristBone.Transform.rotation;
     }
 
+    public Transform GetWristWorldTransform()
+    {
+        return _wristBone.Transform;
+    }
+
     public void GetThumbTipWorldTransform(out Vector3 position, out Quaternion rotation)
     {
         position = _thumbTipBone.Transform.position;

@@ -25,7 +25,9 @@ public class GizmoVisualizer : MonoBehaviour
     // Update is called once per frame
     void LateUpdate()
     {
-        rotationInteractor.GetTriangleTransform(out pos, out rot);
+        // rotationInteractor.GetTriangleTransform(out pos, out rot);
+        Vector3 pos = this.transform.position;
+        Quaternion rot = this.transform.rotation;
         // rotationInteractor.GetTriangleTransformRaw(out Vector3 f, out Vector3 u);
         DrawAxis(x, pos, rot * Vector3.right);
         DrawAxis(y, pos, rot * Vector3.up);

@@ -28,10 +28,13 @@ public class ErgonomicsSceneManager : MonoBehaviour
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
     private const float INIT_ROTATION_DEG = 90f;
-    private Dictionary<int, Vector3> _gridPositions = new Dictionary<int, Vector3>();
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
-    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
+    private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 10f;
+
+    private Vector3 _wristWorldPosition, _wristReferenceWorldPosition, _wristOffsetPosition;
+    private Quaternion _wristWorldRotation, _wristReferenceWorldRotation, _wristOffsetRotation;
+    private const float WRIST_POSITION_THRESHOLD = 0.1f, WRIST_ROTATION_THRESHOLD_DEG = 10f;
 
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration, _trialDuration;
@@ -46,9 +49,14 @@ public class ErgonomicsSceneManager : MonoBehaviour
 
     public event Action OnTrialEnd, OnTrialStart, OnTrialReset, OnSceneLoad, OnTarget, OffTarget, OnTimeout;
 
-    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
+    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false, _isWristCorrect = false;
 
     private List<int> _gridNumbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    private Dictionary<int, Vector3> _gridPositions = new Dictionary<int, Vector3>();
+
+    private Dictionary<int, (float entity1, float entity2)> _wristRotationThresholds = new Dictionary<int, (float, float)>();
+
+    private GameObject _warningSphere;
 
     void Awake()
     {
@@ -62,6 +70,10 @@ public class ErgonomicsSceneManager : MonoBehaviour
         _gridPositions.Add(8, new Vector3(0f, 1f, 0.3f));
         _gridPositions.Add(9, new Vector3(0.1f, 1f, 0.3f));
 
+        _wristRotationThresholds.Add(0, (0f, 60f)); // palmar
+        _wristRotationThresholds.Add(1, (60f, 120f)); // radial
+        _wristRotationThresholds.Add(2, (120f, 180f)); // dorsal
+
         GenerateDie();
         _rotationInteractor.SetCube(_die);
 
@@ -71,7 +83,6 @@ public class ErgonomicsSceneManager : MonoBehaviour
         _rotationInteractor.SetTransferFunction(TRANSFERFUNCTION);
 
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}, Set {_setNum}/{MAX_SET_NUM}";
-
     }
     // Start is called before the first frame update
     void Start()
@@ -132,11 +143,19 @@ public class ErgonomicsSceneManager : MonoBehaviour
 
         OnSceneLoad?.Invoke();
         ResetDie();
+
+        _warningSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        _warningSphere.transform.localScale = new Vector3(0.04f, 0.04f, 0.04f);
+        _warningSphere.GetComponent<Collider>().enabled = false;
     }
 
     // Update is called once per frame
     void Update()
     {
+        _isWristCorrect = CalculateWristAngle(out float angle);
+        if (_isWristCorrect) _warningSphere.GetComponent<Renderer>().material.color = Color.white;
+        else _warningSphere.GetComponent<Renderer>().material.color = Color.red;
+        
         if (Input.GetKey(KeyCode.Return))
         {
             OnTrialReset?.Invoke();
@@ -154,15 +173,15 @@ public class ErgonomicsSceneManager : MonoBehaviour
 
         if (!_isInTrial) return;
 
-        bool _isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
+        bool isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
 
-        if (_isErrorSmall && !_isOnTarget)
+        if (isErrorSmall && !_isOnTarget)
         {
             _dwellDuration = 0f;
             _isOnTarget = true;
             OnTarget?.Invoke();
         }
-        else if (!_isErrorSmall && _isOnTarget)
+        else if (!isErrorSmall && _isOnTarget)
         {
             _isOnTarget = false;
             OffTarget?.Invoke();
@@ -190,6 +209,8 @@ public class ErgonomicsSceneManager : MonoBehaviour
         ResetDie();
         GenerateTarget();
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}, Set {_setNum}/{MAX_SET_NUM}";
+        // _wristReferenceWorldRotation = _wristReferenceRotations[_expCondition];
+        // _wristReferenceWorldPosition = Vector3.zero;
     }
 
     private void StartTrial()
@@ -296,8 +317,16 @@ public class ErgonomicsSceneManager : MonoBehaviour
         return (pError < POSITION_THRESHOLD) && ((rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG));
     }
 
-    // public bool CalculateWristError(out Vector3 deltaPos, out Quaternion deltaRot)
-    // {
-        
-    // }
+    public bool CalculateWristAngle(out float angle)
+    {
+        _rotationInteractor.GetWristWorldTransform(out Vector3 pos, out Quaternion rot);
+        _warningSphere.transform.position = pos;
+
+        Vector3 up = rot * Vector3.up;
+        Vector3 eyeToWrist = _centerEyeAnchor.transform.position - pos;
+        eyeToWrist.Normalize();
+        float dotProduct = Vector3.Dot(up, eyeToWrist);
+        angle = Mathf.Acos(dotProduct) * Mathf.Rad2Deg;
+        return (_wristRotationThresholds[_expCondition].entity1 < angle) && (_wristRotationThresholds[_expCondition].entity2 > angle); 
+    }
 }
