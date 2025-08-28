@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class ErgonomicsSceneManager : MonoBehaviour
 {
@@ -18,13 +19,15 @@ public class ErgonomicsSceneManager : MonoBehaviour
     [SerializeField]
     private GameObject _centerEyeAnchor;
     [SerializeField]
+    protected TextMeshProUGUI _text;
+    [SerializeField]
     private RotationInteractor _rotationInteractor;
     [SerializeField]
     private ErgonomicsLogManager _logManager;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
-    private const float INIT_ROTATION_DEG = 135f;
+    private const float INIT_ROTATION_DEG = 90f;
     private Dictionary<int, Vector3> _gridPositions = new Dictionary<int, Vector3>();
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
@@ -41,27 +44,14 @@ public class ErgonomicsSceneManager : MonoBehaviour
     private DieGrabHandler _grabHandler;
     private DieReleaseHandler _releaseHandler;
 
+    public event Action OnTrialEnd, OnTrialStart, OnTrialReset, OnSceneLoad, OnTarget, OffTarget, OnTimeout;
+
+    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
+
     private List<int> _gridNumbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
     void Awake()
     {
-        GenerateDie();
-        _rotationInteractor.SetCube(_die);
-
-        if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
-        else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
-
-        _rotationInteractor.SetTransferFunction(TRANSFERFUNCTION);
-
-    }
-    // Start is called before the first frame update
-    void Start()
-    {
-        _grabHandler = _die.GetComponentInChildren<DieGrabHandler>();
-        _releaseHandler = _die.GetComponentInChildren<DieReleaseHandler>();
-
-        
-
         _gridPositions.Add(1, new Vector3(-0.1f, 1.2f, 0.3f));
         _gridPositions.Add(2, new Vector3(0f, 1.2f, 0.3f));
         _gridPositions.Add(3, new Vector3(0.1f, 1.2f, 0.3f));
@@ -72,13 +62,121 @@ public class ErgonomicsSceneManager : MonoBehaviour
         _gridPositions.Add(8, new Vector3(0f, 1f, 0.3f));
         _gridPositions.Add(9, new Vector3(0.1f, 1f, 0.3f));
 
+        GenerateDie();
+        _rotationInteractor.SetCube(_die);
+
+        if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
+        else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
+
+        _rotationInteractor.SetTransferFunction(TRANSFERFUNCTION);
+
+        _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}, Set {_setNum}/{MAX_SET_NUM}";
+
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
+        _grabHandler = _die.GetComponentInChildren<DieGrabHandler>();
+        _releaseHandler = _die.GetComponentInChildren<DieReleaseHandler>();
+
         ShuffleNumbers(_gridNumbers);
+
+        // scene load
+        OnSceneLoad += LoadNewScene;
+        // OnSceneLoad += () => { OnEvent?.Invoke("Scene Loaded"); };
+
+        // trial start
+        OnTrialStart += StartTrial;
+        // OnTrialStart += () => { OnEvent?.Invoke("Trial Start"); };
+
+        // trial end
+        OnTrialEnd += EndTrial;
+        OnTrialEnd += _rotationInteractor.Reset;
+        // OnTrialEnd += () => { OnEvent?.Invoke("Trial End"); };
+
+        // trial reset
+        OnTrialReset += ResetTrial;
+        OnTrialReset += _rotationInteractor.Reset;
+        // OnTrialReset += () => { OnEvent?.Invoke("Trial Reset"); };
+
+        // grab
+        _grabHandler.OnGrab += OnGrab;
+        _grabHandler.OnGrab += _rotationInteractor.OnGrab;
+        // _grabHandler.OnGrab += () => { OnEvent?.Invoke("Grab"); };
+
+        // release
+        _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
+        // _releaseHandler.OnRelease += () => { OnEvent?.Invoke("Release"); };
+
+        // clutch start
+        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
+        // _rotationInteractor.OnClutchStart += () => { OnEvent?.Invoke("Clutch Start"); };
+
+        // clutch end
+        _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
+        // _rotationInteractor.OnClutchEnd += () => { OnEvent?.Invoke("Clutch End"); };
+
+        // on target
+        OnTarget += _rotationInteractor.OnTarget;
+        OnTarget += _releaseHandler.OnTarget;
+        // OnTarget += () => { OnEvent?.Invoke("On Target"); };
+
+        // off target
+        OffTarget += _rotationInteractor.OffTarget;
+        OffTarget += _releaseHandler.OffTarget;
+        // OffTarget += () => { OnEvent?.Invoke("Off Target"); };
+
+        // timeout
+        OnTimeout += Timeout;
+        // OnTimeout += () => { OnEvent?.Invoke("Timed Out"); };
+
+        OnSceneLoad?.Invoke();
+        ResetDie();
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKey(KeyCode.Return))
+        {
+            OnTrialReset?.Invoke();
+            return;
+        }
 
+        _trialDuration += Time.deltaTime;
+
+        if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
+        {
+            OnTimeout?.Invoke();
+            if (_setNum <= MAX_SET_NUM) OnSceneLoad?.Invoke();
+            return;
+        }
+
+        if (!_isInTrial) return;
+
+        bool _isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
+
+        if (_isErrorSmall && !_isOnTarget)
+        {
+            _dwellDuration = 0f;
+            _isOnTarget = true;
+            OnTarget?.Invoke();
+        }
+        else if (!_isErrorSmall && _isOnTarget)
+        {
+            _isOnTarget = false;
+            OffTarget?.Invoke();
+        }
+
+        if (_isOnTarget)
+        {
+            _dwellDuration += Time.deltaTime;
+            if (_dwellDuration > DWELL_THRESHOLD)
+            {
+                OnTrialEnd?.Invoke();
+                if (_setNum <= MAX_SET_NUM) OnSceneLoad?.Invoke();
+            }
+        }
     }
 
     void OnDestroy()
@@ -87,33 +185,64 @@ public class ErgonomicsSceneManager : MonoBehaviour
         DestroyDie();
     }
 
-    public void ShuffleNumbers(List<int> list)
+    private void LoadNewScene()
     {
-        System.Random rng = new System.Random();
-        int n = list.Count;
-        while (n > 1)
+        ResetDie();
+        GenerateTarget();
+        _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}, Set {_setNum}/{MAX_SET_NUM}";
+    }
+
+    private void StartTrial()
+    {
+        _isTimeout = false;
+        _isInTrial = true;
+        _trialDuration = 0f;
+    }
+
+    private void EndTrial()
+    {
+        // ResetDie();
+        DestroyTarget();
+        _isOnTarget = false;
+        _isInTrial = false;
+
+        if (_trialNum == MAX_TRIAL_NUM)
         {
-            n--;
-            int k = rng.Next(n + 1);
-            int value = list[k];
-            list[k] = list[n];
-            list[n] = value;
+            if (_setNum == MAX_SET_NUM)
+            {
+                _die.SetActive(false);
+            }
+            _setNum++;
+            _trialNum = 0;
+        }
+        _trialNum++;
+    }
+
+    private void ResetTrial()
+    {
+        ResetDie();
+        _isOnTarget = false;
+        _trialDuration = 0f;
+    }
+
+    private void OnGrab()
+    {
+        if (!_isInTrial)
+        {
+            OnTrialStart?.Invoke();
         }
     }
 
-    public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)
+    private void Timeout()
     {
-        deltaPos = _target.transform.position - _die.transform.position; //
-        deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
-        float pError = deltaPos.magnitude;
-        deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
-        return (pError < POSITION_THRESHOLD) && ((rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG));
+        _isTimeout = true;
+        OnTrialEnd?.Invoke();
     }
 
     private void GenerateDie()
     {
         _die = Instantiate(_diePrefab);
-        _die.transform.position = _gridPositions[_gridNumbers[_setNum]];
+        _die.transform.position = new Vector3(1f, 1f, 1f);
         _die.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
         _die.transform.rotation = Quaternion.identity;
     }
@@ -139,8 +268,36 @@ public class ErgonomicsSceneManager : MonoBehaviour
         _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
     }
 
-        private void DestroyTarget()
+    private void DestroyTarget()
     {
         Destroy(_target);
     }
+
+    public void ShuffleNumbers(List<int> list)
+    {
+        System.Random rng = new System.Random();
+        int n = list.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            int value = list[k];
+            list[k] = list[n];
+            list[n] = value;
+        }
+    }
+
+    public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)
+    {
+        deltaPos = _target.transform.position - _die.transform.position; //
+        deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
+        float pError = deltaPos.magnitude;
+        deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
+        return (pError < POSITION_THRESHOLD) && ((rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG));
+    }
+
+    // public bool CalculateWristError(out Vector3 deltaPos, out Quaternion deltaRot)
+    // {
+        
+    // }
 }

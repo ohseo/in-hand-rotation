@@ -6858,6 +6858,61 @@ Transform:
   m_Children: []
   m_Father: {fileID: 562038061}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1507940020
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1507940022}
+  - component: {fileID: 1507940021}
+  m_Layer: 0
+  m_Name: ErgonomicsSceneManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1507940021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507940020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cba0decb460e80d43a021756a416e55f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _participantNum: 0
+  _expCondition: 0
+  _isLeftHanded: 0
+  _diePrefab: {fileID: 1016349629435091919, guid: 1cf35a6e9e670d042992bbae2273f70c, type: 3}
+  _targetPrefab: {fileID: 1618645656371774453, guid: 9dd4e15a530376848b3093ec97b91b12, type: 3}
+  _ovrRightSkeleton: {fileID: 643088644}
+  _ovrLeftSkeleton: {fileID: 750940862}
+  _centerEyeAnchor: {fileID: 2139425078}
+  _text: {fileID: 565504827}
+  _rotationInteractor: {fileID: 94333789}
+  _logManager: {fileID: 1851658148}
+--- !u!4 &1507940022
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1507940020}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1560579641
 GameObject:
   m_ObjectHideFlags: 0
@@ -8643,6 +8698,50 @@ Transform:
   m_Children:
   - {fileID: 507988813}
   m_Father: {fileID: 1623201418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1851658147
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1851658149}
+  - component: {fileID: 1851658148}
+  m_Layer: 0
+  m_Name: ErgonomicsLogManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1851658148
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1851658147}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da994b528c3a1f545aceb4125c2fa8ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1851658149
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1851658147}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1856036271
 GameObject:
@@ -10948,3 +11047,5 @@ SceneRoots:
   - {fileID: 94333790}
   - {fileID: 854956794}
   - {fileID: 1100874364}
+  - {fileID: 1507940022}
+  - {fileID: 1851658149}
