@@ -27,7 +27,7 @@ public class AxisSceneManager : MonoBehaviour
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
-    private List<float> _initRotationDeg = new List<float> { 30f};
+    private List<float> _initRotationDeg = new List<float> { 30f, 45f, 60f, 75f };
     private Dictionary<string, Vector3> _rotationAxis = new Dictionary<string, Vector3>();
     private Dictionary<int, string> _latinSquare6 = new Dictionary<int, string>();
     private string _axisSequence, _axisCond;
@@ -77,8 +77,9 @@ public class AxisSceneManager : MonoBehaviour
         _rotationAxis.Add("e", new Vector3(0f, 1f, 0f));
         _rotationAxis.Add("f", new Vector3(0f, -1f, 0f));
 
+        ShuffleNumbers(_initRotationDeg);
+
         _maxTrialNum = MAX_SET_NUM * _initRotationDeg.Count * _rotationAxis.Count;
-        Debug.Log(_maxTrialNum);
 
         _axisCond = _axisSequence[_axisNum].ToString();
         _angleCond = _initRotationDeg[_angleNum];
@@ -261,7 +262,7 @@ public class AxisSceneManager : MonoBehaviour
         HighlightOff();
         _trialNum++;
         _angleNum++;
-        if (_angleNum == _initRotationDeg.Count) { _angleNum = 0; _axisNum++;}
+        if (_angleNum == _initRotationDeg.Count) { _angleNum = 0; _axisNum++; ShuffleNumbers(_initRotationDeg); }
         if (_axisNum == _rotationAxis.Count) { _axisNum = 0; _setNum++; }
         _axisCond = _axisSequence[_axisNum].ToString();
         _angleCond = _initRotationDeg[_angleNum];
@@ -417,7 +418,7 @@ public class AxisSceneManager : MonoBehaviour
         isTimeout = _isTimeout;
     }
 
-    public void ShuffleNumbers(List<int> list)
+    public void ShuffleNumbers(List<float> list)
     {
         System.Random rng = new System.Random();
         int n = list.Count;
@@ -425,7 +426,7 @@ public class AxisSceneManager : MonoBehaviour
         {
             n--;
             int k = rng.Next(n + 1);
-            int value = list[k];
+            float value = list[k];
             list[k] = list[n];
             list[n] = value;
         }
