@@ -8,8 +8,7 @@ public class AxisSceneManager : MonoBehaviour
 {
     [SerializeField]
     private int _participantNum;
-    [SerializeField]
-    private int _expCondition = 0; // 0: Baseline, 1: Linear, 2: Power, 3: Tanh
+    private const int EXP_CONDITION = 1; // 0: Baseline, 1: Linear, 2: Power, 3: Tanh
     [SerializeField]
     private bool _isLeftHanded = false;
     [SerializeField]
@@ -28,32 +27,36 @@ public class AxisSceneManager : MonoBehaviour
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
-    private const float INIT_ROTATION_DEG = 135f;
-    private List<float> _initRotationDeg = new List<float> { 30f, 45f, 60f, 90f };
+    private List<float> _initRotationDeg = new List<float> { 30f};
     private Dictionary<string, Vector3> _rotationAxis = new Dictionary<string, Vector3>();
-    private string _axisCondition = "a";
     private Dictionary<int, string> _latinSquare6 = new Dictionary<int, string>();
-    private string _axisSequence;
-    private int _axisNum = 0;
-    private Vector3 _diePosition = new Vector3(0.05f, 1f, 0.3f);
-    private Vector3 _targetPosition = new Vector3(-0.05f, 1f, 0.3f);
+    private string _axisSequence, _axisCond;
+    private int _axisNum = 0, _angleNum = 0;
+    private float _angleCond = 0f;
+    private Vector3 _diePosition = new Vector3(-0.05f, 1.1f, 0.3f);
+    private Vector3 _targetPosition = new Vector3(0.05f, 1.1f, 0.3f);
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
-    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
+    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 10f;
 
-    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
+    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false, _isRightAngle = false;
 
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 5f;
     private float _dwellDuration, _trialDuration;
 
-    private const int MAX_TRIAL_NUM = 20;
+    private const int MAX_SET_NUM = 2;
+    private int _setNum = 1;
+
+    private int _maxTrialNum = 48;
     private int _trialNum = 1;
 
     private DieGrabHandler _grabHandler;
     private DieReleaseHandler _releaseHandler;
 
-    public event Action OnTrialEnd, OnTrialStart, OnTrialReset, OnSceneLoad, OnTarget, OffTarget, OnTimeout;
+    public event Action OnTrialEnd, OnTrialStart, OnTrialReset, OnSceneLoad, OnTarget, OffTarget, OnAngle, OffAngle, OnTimeout;
     public event Action<string> OnEvent;
+
+    private LineRenderer _arrowRenderer;
 
 
     void Awake()
@@ -74,17 +77,23 @@ public class AxisSceneManager : MonoBehaviour
         _rotationAxis.Add("e", new Vector3(0f, 1f, 0f));
         _rotationAxis.Add("f", new Vector3(0f, -1f, 0f));
 
+        _maxTrialNum = MAX_SET_NUM * _initRotationDeg.Count * _rotationAxis.Count;
+        Debug.Log(_maxTrialNum);
+
+        _axisCond = _axisSequence[_axisNum].ToString();
+        _angleCond = _initRotationDeg[_angleNum];
+
         GenerateDie();
         _rotationInteractor.SetCube(_die);
 
         if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
         else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
 
-        _rotationInteractor.SetTransferFunction(_expCondition);
+        _rotationInteractor.SetTransferFunction(EXP_CONDITION);
 
-        _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+        _text.text = $"Set {_setNum}/{MAX_SET_NUM}, {_angleNum}, {_axisNum}";
 
-        _logManager.SetExpConditions(_participantNum, _expCondition);
+        _logManager.SetExpConditions(_participantNum, EXP_CONDITION);
     }
 
     // Start is called before the first frame update
@@ -98,52 +107,60 @@ public class AxisSceneManager : MonoBehaviour
 
         // scene load
         OnSceneLoad += LoadNewScene;
-        // OnSceneLoad += () => { OnEvent?.Invoke("Scene Loaded"); };
+        OnSceneLoad += () => { OnEvent?.Invoke("Scene Loaded"); };
 
         // trial start
         OnTrialStart += StartTrial;
-        // OnTrialStart += () => { OnEvent?.Invoke("Trial Start"); };
+        OnTrialStart += () => { OnEvent?.Invoke("Trial Start"); };
 
         // trial end
-        OnTrialEnd += EndTrial;
         OnTrialEnd += _rotationInteractor.Reset;
-        // OnTrialEnd += () => { OnEvent?.Invoke("Trial End"); };
+        OnTrialEnd += () => { OnEvent?.Invoke("Trial End"); };
+        OnTrialEnd += EndTrial;
 
         // trial reset
         OnTrialReset += ResetTrial;
         OnTrialReset += _rotationInteractor.Reset;
-        // OnTrialReset += () => { OnEvent?.Invoke("Trial Reset"); };
+        OnTrialReset += () => { OnEvent?.Invoke("Trial Reset"); };
 
         // grab
         _grabHandler.OnGrab += OnGrab;
         _grabHandler.OnGrab += _rotationInteractor.OnGrab;
-        // _grabHandler.OnGrab += () => { OnEvent?.Invoke("Grab"); };
+        _grabHandler.OnGrab += () => { OnEvent?.Invoke("Grab"); };
 
         // release
         _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
-        // _releaseHandler.OnRelease += () => { OnEvent?.Invoke("Release"); };
+        _releaseHandler.OnRelease += () => { OnEvent?.Invoke("Release"); };
 
         // clutch start
         _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
-        // _rotationInteractor.OnClutchStart += () => { OnEvent?.Invoke("Clutch Start"); };
+        _rotationInteractor.OnClutchStart += () => { OnEvent?.Invoke("Clutch Start"); };
 
         // clutch end
         _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
-        // _rotationInteractor.OnClutchEnd += () => { OnEvent?.Invoke("Clutch End"); };
+        _rotationInteractor.OnClutchEnd += () => { OnEvent?.Invoke("Clutch End"); };
 
         // on target
         OnTarget += _rotationInteractor.OnTarget;
         OnTarget += _releaseHandler.OnTarget;
-        // OnTarget += () => { OnEvent?.Invoke("On Target"); };
+        OnTarget += () => { OnEvent?.Invoke("On Target"); };
 
         // off target
         OffTarget += _rotationInteractor.OffTarget;
         OffTarget += _releaseHandler.OffTarget;
-        // OffTarget += () => { OnEvent?.Invoke("Off Target"); };
+        OffTarget += () => { OnEvent?.Invoke("Off Target"); };
+
+        // on angle
+        OnAngle += HighlightOn;
+        OnAngle += () => { OnEvent?.Invoke("HighlightOn"); };
+
+        // off angle
+        OffAngle += HighlightOff;
+        OffAngle += () => { OnEvent?.Invoke("HighlightOff"); };
 
         // timeout
         OnTimeout += Timeout;
-        // OnTimeout += () => { OnEvent?.Invoke("Timed Out"); };
+        OnTimeout += () => { OnEvent?.Invoke("Timed Out"); };
 
         OnSceneLoad?.Invoke();
     }
@@ -162,33 +179,50 @@ public class AxisSceneManager : MonoBehaviour
         if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
         {
             OnTimeout?.Invoke();
-            if (_trialNum <= MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
+            if (_trialNum <= _maxTrialNum) OnSceneLoad?.Invoke();
             return;
         }
 
         if (!_isInTrial) return;
 
-        bool isErrorSmall = CalculateError(out _targetOffsetPosition, out _targetOffsetRotation);
+        bool isErrorSmall = CalculateRotError(out _targetOffsetRotation);
+        bool isClose = CalculatePosError(out _targetOffsetPosition);
 
-        if (isErrorSmall && !_isOnTarget)
+        if (!isClose || !isErrorSmall)
+        {
+            _dwellDuration = 0f;
+        }
+
+        if (isErrorSmall && !_isRightAngle)
+        {
+            _isRightAngle = true;
+            OnAngle?.Invoke();
+        }
+        else if (!isErrorSmall && _isRightAngle)
+        {
+            _isRightAngle = false;
+            OffAngle?.Invoke();
+        }
+
+        if (isClose && !_isOnTarget)
         {
             _dwellDuration = 0f;
             _isOnTarget = true;
             OnTarget?.Invoke();
         }
-        else if (!isErrorSmall && _isOnTarget)
+        else if (!isClose && _isOnTarget)
         {
             _isOnTarget = false;
             OffTarget?.Invoke();
         }
 
-        if (_isOnTarget)
+        if (_isOnTarget && _isRightAngle)
         {
             _dwellDuration += Time.deltaTime;
             if (_dwellDuration > DWELL_THRESHOLD)
             {
                 OnTrialEnd?.Invoke();
-                if (_trialNum <= MAX_TRIAL_NUM) OnSceneLoad?.Invoke();
+                if (_trialNum <= _maxTrialNum) OnSceneLoad?.Invoke();
             }
         }
     }
@@ -202,7 +236,8 @@ public class AxisSceneManager : MonoBehaviour
     private void LoadNewScene()
     {
         GenerateTarget();
-        _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+        ResetDie();
+        _text.text = $"Set {_setNum}/{MAX_SET_NUM}, {_angleNum}, {_axisNum}";
     }
 
     private void StartTrial()
@@ -214,22 +249,29 @@ public class AxisSceneManager : MonoBehaviour
 
     private void EndTrial()
     {
-        ResetDie();
         DestroyTarget();
         _isOnTarget = false;
+        _isRightAngle = false;
         _isInTrial = false;
 
-        if (_trialNum == MAX_TRIAL_NUM)
+        if (_trialNum == _maxTrialNum)
         {
             _die.SetActive(false);
         }
+        HighlightOff();
         _trialNum++;
+        _angleNum++;
+        if (_angleNum == _initRotationDeg.Count) { _angleNum = 0; _axisNum++;}
+        if (_axisNum == _rotationAxis.Count) { _axisNum = 0; _setNum++; }
+        _axisCond = _axisSequence[_axisNum].ToString();
+        _angleCond = _initRotationDeg[_angleNum];
     }
 
     private void ResetTrial()
     {
         ResetDie();
         _isOnTarget = false;
+        _isRightAngle = false;
         _trialDuration = 0f;
     }
 
@@ -241,17 +283,38 @@ public class AxisSceneManager : MonoBehaviour
         }
     }
 
+    private void HighlightOn()
+    {
+        Transform t = _die.transform.Find("arrow");
+        LineRenderer lr = t.gameObject.GetComponent<LineRenderer>();
+        lr.startColor = Color.red;
+        lr.endColor = Color.red;
+    }
+
+    private void HighlightOff()
+    {
+        Transform t = _die.transform.Find("arrow");
+        LineRenderer lr = t.gameObject.GetComponent<LineRenderer>();
+        lr.startColor = Color.white;
+        lr.endColor = Color.white;
+    }
+
     private void Timeout()
     {
         _isTimeout = true;
         OnTrialEnd?.Invoke();
     }
 
-    public bool CalculateError(out Vector3 deltaPos, out Quaternion deltaRot)
+    public bool CalculatePosError(out Vector3 deltaPos)
     {
         deltaPos = _target.transform.position - _die.transform.position; //
-        deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
         float pError = deltaPos.magnitude;
+        return pError < POSITION_THRESHOLD;
+    }
+
+    public bool CalculateRotError(out Quaternion deltaRot)
+    {
+        deltaRot = _target.transform.rotation * Quaternion.Inverse(_die.transform.rotation);
         deltaRot.ToAngleAxis(out float rError, out Vector3 axis);
         return (rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG);
     }
@@ -283,16 +346,10 @@ public class AxisSceneManager : MonoBehaviour
     private void GenerateTarget()
     {
         _target = Instantiate(_targetPrefab);
-        // Vector3 axis = UnityEngine.Random.onUnitSphere;
-        int r = UnityEngine.Random.Range(0, 4);
-        Debug.Log($"Random: {r}, {_initRotationDeg[r]}");
-        string axisCond = _axisSequence[_axisNum].ToString();
-        _target.transform.Rotate(_rotationAxis[axisCond], _initRotationDeg[r]);
+        _target.transform.Rotate(_rotationAxis[_axisCond], _initRotationDeg[_angleNum]);
         _target.transform.position = new Vector3(_diePosition.x - 0.1f, _diePosition.y, _diePosition.z);
         _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
         DrawAxisOnGO(_target);
-        _axisNum++;
-        if (_axisNum == 6) _axisNum = 0;
     }
 
     private void DestroyTarget()
@@ -302,11 +359,10 @@ public class AxisSceneManager : MonoBehaviour
 
     private void DrawAxisOnGO(GameObject go)
     {
-        string axisCond = _axisSequence[_axisNum].ToString();
         LineRenderer lr = go.GetComponent<LineRenderer>();
         lr.useWorldSpace = false;
-        lr.SetPosition(0, _rotationAxis[axisCond] * -1f);
-        lr.SetPosition(1, _rotationAxis[axisCond]);
+        lr.SetPosition(0, _rotationAxis[_axisCond] * -1f);
+        lr.SetPosition(1, _rotationAxis[_axisCond]);
     }
 
     private void DrawArrow(GameObject go)
@@ -314,12 +370,11 @@ public class AxisSceneManager : MonoBehaviour
         Transform t = go.transform.Find("arrow");
         if (t == null) return;
         GameObject child = t.gameObject;
-        // string axisCond = _axisSequence[_axisNum].ToString();
         LineRenderer lr = t.GetComponentInChildren<LineRenderer>();
         int steps = 100;
         lr.useWorldSpace = false;
-        lr.positionCount = steps+1;
-        float angleStep = 360f / (steps*1.5f);
+        lr.positionCount = steps + 1;
+        float angleStep = 360f / (steps * 1.5f);
         Vector3 point = Vector3.zero;
         for (int i = 0; i < steps; i++)
         {
@@ -328,13 +383,11 @@ public class AxisSceneManager : MonoBehaviour
             lr.SetPosition(i, point);
         }
         lr.SetPosition(steps, point + new Vector3(-0.7f, 0.5f, 0f));
-        string axisCond = _axisSequence[_axisNum].ToString();
-        Vector3 axis = _rotationAxis[axisCond];
+        Vector3 axis = _rotationAxis[_axisCond];
         axis.Normalize();
         Quaternion r = Quaternion.LookRotation(axis);
-        // r *= Quaternion.Euler(90, 0, 0);
         t.localRotation = r;
-        
+
     }
 
     public void GetHeadTransform(out Vector3 position, out Quaternion rotation)
@@ -355,12 +408,27 @@ public class AxisSceneManager : MonoBehaviour
         rotation = _targetOffsetRotation;
     }
 
-    public void GetStatus(out bool isGrabbing, out bool isClutching, out bool isOverlapped, out bool isTimeout)
+    public void GetStatus(out bool isGrabbing, out bool isClutching, out bool isOverlapped, out bool isRightAngle, out bool isTimeout)
     {
         isGrabbing = _rotationInteractor.IsGrabbed;
         isClutching = _rotationInteractor.IsClutching;
         isOverlapped = _isOnTarget;
+        isRightAngle = _isRightAngle;
         isTimeout = _isTimeout;
+    }
+
+    public void ShuffleNumbers(List<int> list)
+    {
+        System.Random rng = new System.Random();
+        int n = list.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            int value = list[k];
+            list[k] = list[n];
+            list[n] = value;
+        }
     }
 
     public bool IsInTrial
@@ -380,4 +448,37 @@ public class AxisSceneManager : MonoBehaviour
         get { return _trialDuration; }
         set { _trialDuration = value; }
     }
+
+    public int AxisNum
+    {
+        get { return _axisNum; }
+        set { _axisNum = value; }
+    }
+
+    public int AngleNum
+    {
+        get { return _angleNum; }
+        set { _angleNum = value; }
+    }
+
+    public float AngleCond
+    {
+        get
+        {
+            return _angleCond;
+        }
+    }
+
+    public int SetNum
+    {
+        get { return _setNum; }
+        set { _setNum = value; }
+    }
+
+    public string AxisCond
+    {
+        get { return _axisCond; }
+        set { _axisCond = value; }
+    }
+    
 }

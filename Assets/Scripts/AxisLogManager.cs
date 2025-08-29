@@ -65,15 +65,10 @@ public class AxisLogManager : MonoBehaviour
     private float _totalDieWorldRotation, _totalDieLocalRotation, _totalHeadWorldRotation;
 
     //status
-    private bool _isGrabbing, _isClutching, _isOverlapped, _isTimeout;
-    private int _trialNum;
-    private string _eventName;
-    private float _taskCompletionTime, _trialDuration;
-
-    private string[] _eventNames = new string[11] { "Scene Loaded", "Trial Start", "Trial End", "Trial Reset",
-                                                    "Grab", "Release", "Clutch Start", "Clutch End",
-                                                    "On Target", "Off Target", "Timed Out"};
-
+    private bool _isGrabbing, _isClutching, _isOverlapped, _isTimeout, _isRightAngle;
+    private int _trialNum, _axisNum, _angleNum, _setNum;
+    private string _eventName, _axisCond;
+    private float _taskCompletionTime, _trialDuration, _angleCond;
 
     // Start is called before the first frame update
     void Start()
@@ -88,26 +83,26 @@ public class AxisLogManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // DateTimeOffset dt = new DateTimeOffset(DateTime.Now);
-        // _timeStamp = dt.ToUnixTimeMilliseconds();
+        DateTimeOffset dt = new DateTimeOffset(DateTime.Now);
+        _timeStamp = dt.ToUnixTimeMilliseconds();
         
-        // _trialNum = _axisSceneManager.TrialNum;
-        // _trialDuration = _axisSceneManager.TrialDuration;
+        _trialNum = _axisSceneManager.TrialNum;
+        _trialDuration = _axisSceneManager.TrialDuration;
 
-        // UpdateFingerJointsData();
-        // UpdateModificationData();
-        // UpdateDieData();
-        // UpdateHeadData();
-        // UpdateStatusData();
-        // UpdateTrialData();
+        UpdateFingerJointsData();
+        UpdateModificationData();
+        UpdateDieData();
+        UpdateHeadData();
+        UpdateStatusData();
+        UpdateTrialData();
 
-        // if (_axisSceneManager.IsInTrial)
-        // {
-        //     AccumulateData();
-        //     StorePreviousData();
-        //     UpdateStreamData();
-        //     _streamWriter.WriteLine(GenerateStreamString());
-        // }
+        if (_axisSceneManager.IsInTrial)
+        {
+            AccumulateData();
+            StorePreviousData();
+            UpdateStreamData();
+            _streamWriter.WriteLine(GenerateStreamString());
+        }
     }
     
     void OnDestroy()
@@ -123,7 +118,7 @@ public class AxisLogManager : MonoBehaviour
 
     public string CreateFilePath()
     {
-        string conditions = $"_P{_participantNum}_Exp1_Condition{_expCondition}";
+        string conditions = $"_P{_participantNum}_Exp2";
         string fileName = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + conditions;
         return BASE_DIRECTORY_PATH + fileName;
     }
@@ -166,7 +161,7 @@ public class AxisLogManager : MonoBehaviour
     {
         try
         {
-            string streamFilePath = _filePath + $"_Trial{_trialNum}_StreamData.csv";
+            string streamFilePath = _filePath + $"_Set{_setNum}_Axis-{_axisCond}_Angle{_angleCond}_StreamData.csv";
             _streamFileStream = new FileStream(streamFilePath, FileMode.Create, FileAccess.Write);
             _streamWriter = new StreamWriter(_streamFileStream, System.Text.Encoding.UTF8);
             string header = string.Join(",", new List<string>(_streamData.Keys));
@@ -214,12 +209,19 @@ public class AxisLogManager : MonoBehaviour
         {
             CreateStreamFile();
         }
+        else if (eventName.Equals("HighlightOn"))
+        {
+            if (_taskCompletionTime == 0f)
+            {
+                _taskCompletionTime = _trialDuration;
+            }
+        }
         else if (eventName.Equals("Trial End"))
         {
-            _taskCompletionTime = _trialDuration;
             CloseStreamFile();
             UpdateSummaryData();
             _summaryWriter.WriteLine(GenerateSummaryString());
+            _taskCompletionTime = 0f;
         }
         else if (eventName.Equals("Trial Start"))
         {
@@ -270,13 +272,17 @@ public class AxisLogManager : MonoBehaviour
 
     public void UpdateStatusData()
     {
-        _axisSceneManager.GetStatus(out _isGrabbing, out _isClutching, out _isOverlapped, out _isTimeout);
+        _axisSceneManager.GetStatus(out _isGrabbing, out _isClutching, out _isOverlapped, out _isRightAngle, out _isTimeout);
     }
 
     public void UpdateTrialData()
     {
         _trialNum = _axisSceneManager.TrialNum;
         _trialDuration = _axisSceneManager.TrialDuration;
+        _axisNum = _axisSceneManager.AxisNum;
+        _axisCond = _axisSceneManager.AxisCond;
+        _setNum = _axisSceneManager.SetNum;
+        _angleCond = _axisSceneManager.AngleCond;
     }
 
     public void StorePreviousData()
@@ -574,11 +580,15 @@ public class AxisLogManager : MonoBehaviour
         _streamData["Is Grabbing"] = _isGrabbing;
         _streamData["Is Clutching"] = _isClutching;
         _streamData["Is Overlapped"] = _isOverlapped;
+        _streamData["Is Right Angle"] = _isRightAngle;
     }
 
     void UpdateEventData()
     {
         _eventData["Trial"] = _trialNum;
+        _eventData["Set"] = _setNum;
+        _eventData["Angle"] = _angleCond;
+        _eventData["Axis"] = _axisCond;
         _eventData["Timestamp"] = _timeStamp;
         _eventData["Event Name"] = _eventName;
         _eventData["Trial Duration"] = _trialDuration;
@@ -610,7 +620,10 @@ public class AxisLogManager : MonoBehaviour
     
     void UpdateSummaryData()
     {
-        _summaryData["Trial"] = _trialNum - 1;
+        _summaryData["Trial"] = _trialNum;
+        _summaryData["Set"] = _setNum;
+        _summaryData["Angle"] = _angleCond;
+        _summaryData["Axis"] = _axisCond;
         _summaryData["Task Completion Time"] = _taskCompletionTime;
         _summaryData["Is Timeout"] = _isTimeout;
 
