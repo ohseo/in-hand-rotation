@@ -27,7 +27,7 @@ public class ErgonomicsSceneManager : MonoBehaviour
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
-    private const float INIT_ROTATION_DEG = 90f;
+    private const float INIT_ROTATION_DEG = 45f;
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
     private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 10f;
@@ -36,10 +36,10 @@ public class ErgonomicsSceneManager : MonoBehaviour
     private Quaternion _wristWorldRotation, _wristReferenceWorldRotation, _wristOffsetRotation;
     private const float WRIST_POSITION_THRESHOLD = 0.1f, WRIST_ROTATION_THRESHOLD_DEG = 10f;
 
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 20f;
     private float _dwellDuration, _trialDuration;
 
-    private const int MAX_TRIAL_NUM = 4, MAX_SET_NUM = 9;
+    private const int MAX_TRIAL_NUM = 3, MAX_SET_NUM = 9;
     private int _trialNum = 1, _setNum = 1;
 
     private const int TRANSFERFUNCTION = 1; // 0: Baseline, 1: linear, 2: accelerating(power), 3: decelerating(hyperbolic tangent)
@@ -72,9 +72,9 @@ public class ErgonomicsSceneManager : MonoBehaviour
         _gridPositions.Add(8, new Vector3(0f, 1f, 0.3f));
         _gridPositions.Add(9, new Vector3(0.1f, 1f, 0.3f));
 
-        _wristRotationThresholds.Add(0, (105f, 165f)); // palmar
-        _wristRotationThresholds.Add(1, (60f, 120f)); // radial
-        _wristRotationThresholds.Add(2, (15f, 75f)); // dorsal
+        _wristRotationThresholds.Add(0, (105f, 180f)); // palmar
+        _wristRotationThresholds.Add(1, (60f, 135f)); // radial
+        _wristRotationThresholds.Add(2, (0f, 75f)); // dorsal
 
         GenerateDie();
         _rotationInteractor.SetCube(_die);
@@ -161,6 +161,7 @@ public class ErgonomicsSceneManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
         _isWristCorrect = CalculateWristAngle(out float angle);
         if (_isWristCorrect) _warningSphere.GetComponent<Renderer>().material.color = Color.white;
         else _warningSphere.GetComponent<Renderer>().material.color = Color.red;
@@ -335,6 +336,9 @@ public class ErgonomicsSceneManager : MonoBehaviour
         Vector3 eyeToWrist = _centerEyeAnchor.transform.position - pos;
         eyeToWrist.Normalize();
         float dotProduct = Vector3.Dot(up, eyeToWrist);
+        // Vector3 worldZ = new Vector3(0f, 0f, 1f);
+        // worldZ.Normalize();
+        // float dotProduct = Vector3.Dot(up, worldZ);
         angle = Mathf.Acos(dotProduct) * Mathf.Rad2Deg;
         return (_wristRotationThresholds[_expCondition].entity1 < angle) && (_wristRotationThresholds[_expCondition].entity2 > angle); 
     }
