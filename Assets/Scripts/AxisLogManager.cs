@@ -209,19 +209,12 @@ public class AxisLogManager : MonoBehaviour
         {
             CreateStreamFile();
         }
-        else if (eventName.Equals("HighlightOn"))
-        {
-            if (_taskCompletionTime == 0f)
-            {
-                _taskCompletionTime = _trialDuration;
-            }
-        }
         else if (eventName.Equals("Trial End"))
         {
+            _taskCompletionTime = _trialDuration;
             CloseStreamFile();
             UpdateSummaryData();
             _summaryWriter.WriteLine(GenerateSummaryString());
-            _taskCompletionTime = 0f;
         }
         else if (eventName.Equals("Trial Start"))
         {

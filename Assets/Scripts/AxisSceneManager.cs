@@ -27,7 +27,7 @@ public class AxisSceneManager : MonoBehaviour
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
-    private List<float> _initRotationDeg = new List<float> { 30f, 45f, 60f, 75f };
+    private List<float> _initRotationDeg = new List<float> { 30f, 45f, 60f, 75f};
     private Dictionary<string, Vector3> _rotationAxis = new Dictionary<string, Vector3>();
     private Dictionary<int, string> _latinSquare6 = new Dictionary<int, string>();
     private string _axisSequence, _axisCond;
@@ -41,13 +41,13 @@ public class AxisSceneManager : MonoBehaviour
 
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false, _isRightAngle = false;
 
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 5f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 20f;
     private float _dwellDuration, _trialDuration;
 
-    private const int MAX_SET_NUM = 2;
+    private const int MAX_SET_NUM = 4;
     private int _setNum = 1;
 
-    private int _maxTrialNum = 48;
+    private int _maxTrialNum;
     private int _trialNum = 1;
 
     private DieGrabHandler _grabHandler;
@@ -68,7 +68,7 @@ public class AxisSceneManager : MonoBehaviour
         _latinSquare6.Add(4, "efdacb");
         _latinSquare6.Add(5, "faebdc");
 
-        _axisSequence = _latinSquare6[(int)_participantNum / 6];
+        _axisSequence = _latinSquare6[(int)_participantNum % 6];
 
         _rotationAxis.Add("a", new Vector3(0f, 0f, 1f));
         _rotationAxis.Add("b", new Vector3(0f, 0f, -1f));
@@ -92,7 +92,7 @@ public class AxisSceneManager : MonoBehaviour
 
         _rotationInteractor.SetTransferFunction(EXP_CONDITION);
 
-        _text.text = $"Set {_setNum}/{MAX_SET_NUM}, {_angleNum}, {_axisNum}";
+        _text.text = $"Set {_setNum}/{MAX_SET_NUM}, Trial {_trialNum % (_initRotationDeg.Count * _rotationAxis.Count) }/{_maxTrialNum/MAX_SET_NUM}";
 
         _logManager.SetExpConditions(_participantNum, EXP_CONDITION);
     }
@@ -238,7 +238,7 @@ public class AxisSceneManager : MonoBehaviour
     {
         GenerateTarget();
         ResetDie();
-        _text.text = $"Set {_setNum}/{MAX_SET_NUM}, {_angleNum}, {_axisNum}";
+        _text.text = $"Set {_setNum}/{MAX_SET_NUM}, Trial {_trialNum % (_initRotationDeg.Count * _rotationAxis.Count) }/{_maxTrialNum/MAX_SET_NUM}";
     }
 
     private void StartTrial()
