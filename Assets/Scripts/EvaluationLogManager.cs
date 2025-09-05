@@ -73,6 +73,8 @@ public class EvaluationLogManager : MonoBehaviour
                                                     "Grab", "Release", "Clutch Start", "Clutch End",
                                                     "On Target", "Off Target", "Timed Out"};
 
+    private bool _isStreamOpen = false;
+
 
     // Start is called before the first frame update
     void Start()
@@ -183,10 +185,16 @@ public class EvaluationLogManager : MonoBehaviour
     {
         _streamWriter.Close();
         _streamFileStream.Close();
+        _isStreamOpen = false;
     }
 
     public void CloseFiles()
     {
+        if (_isStreamOpen)
+        {
+            CloseStreamFile();
+        }
+        
         _eventWriter.Close();
         _eventFileStream.Close();
 
@@ -211,7 +219,7 @@ public class EvaluationLogManager : MonoBehaviour
 
         if (eventName.Equals("Scene Loaded"))
         {
-            CreateStreamFile();
+            _isStreamOpen = CreateStreamFile();
         }
         else if (eventName.Equals("Trial End"))
         {

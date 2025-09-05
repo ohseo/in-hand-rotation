@@ -6097,7 +6097,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a4a18168c4136b4180993b0fefd2460, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _participantNum: 18
+  _participantNum: 2
   _isLeftHanded: 0
   _diePrefab: {fileID: 1016349629435091919, guid: 8829a186aa748d349a6a7da8aca945e2, type: 3}
   _targetPrefab: {fileID: 1618645656371774453, guid: 26ffa9b6bf170e34c9345caddf42e6a4, type: 3}
