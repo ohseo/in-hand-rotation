@@ -164,7 +164,7 @@ public class PrototypeSceneManager : MonoBehaviour
         return (pError < POSITION_THRESHOLD) && ((rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG));
     }
     
-        private void GenerateDie()
+    private void GenerateDie()
     {
         _die = Instantiate(_diePrefab);
         _die.transform.position = new Vector3(-_initPosition.x, _initPosition.y, _initPosition.z);

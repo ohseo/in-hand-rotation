@@ -30,6 +30,8 @@ public class RotationInteractor : MonoBehaviour
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
+    private const float MIN_SCALE_FACTOR = 0.5f, MAX_SCALE_FACTOR = 2.0f, MIN_FLOAT = 1e-4f;
+    private const float MIN_TRIANGLE_AREA = 1f, MAX_TRIANGLE_AREA = 50f; // area is in cm2
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -134,7 +136,7 @@ public class RotationInteractor : MonoBehaviour
 
         foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
 
-        _textbox.text = _transferText[_transferFunction];
+        // _textbox.text = _transferText[_transferFunction];
 
         // transforms are on the local coordinates based on the wrist if not stated otherwise
         _worldWristRotation = _wristBone.Transform.rotation;
@@ -159,10 +161,14 @@ public class RotationInteractor : MonoBehaviour
 
         bool isAngleValid = CalculateAngleAtVertex(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
         bool isTriangleValid = CalculateTriangleOrientation(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
-        bool isTriangleSmall = CalculateTriangleArea(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out float _triangleArea);
+        bool isTriangleAreaValid = CalculateTriangleArea(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out float _triangleArea);
         // position cube with bones since spheres are modified. use world coordinates here.
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
         // _centroidPosition = GetWeightedTriangleCentroid(_scaledWorldThumbTipPosition, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
+        if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
+
+        _textbox.text = $"{_angleScaleFactor}";
+        
 
         if (_isCentroidCentered) _centroidSphere.transform.position = _centroidPosition;
 
@@ -172,7 +178,7 @@ public class RotationInteractor : MonoBehaviour
             {
                 if (_isReset)
                 {
-                    if (isAngleValid && isTriangleValid && isTriangleSmall)
+                    if (isAngleValid && isTriangleValid && isTriangleAreaValid)
                     {
                         _deltaTriangleP1Angle = _triangleP1Angle - _prevAngle;
                         Vector3 triangleAxis = _triangleRotation * Vector3.up;
@@ -201,7 +207,7 @@ public class RotationInteractor : MonoBehaviour
             else _cube.transform.position = _grabOffsetPosition + _centroidPosition;
         }
 
-        if (isAngleValid && isTriangleValid && isTriangleSmall)
+        if (isAngleValid && isTriangleValid && isTriangleAreaValid)
         {
             _prevAngle = _triangleP1Angle;
             _prevTriangleRotation = _triangleRotation;
@@ -315,19 +321,37 @@ public class RotationInteractor : MonoBehaviour
             _thumbWeight = GetThumbWeight(angle);
             return (_thumbWeight * p1 + p2 + p3) / (_thumbWeight + 1f + 1f);
         }
-        else return ((p1 + p2 + p3) / 3f);
+        else return (p1 + p2 + p3) / 3f;
+    }
+
+    public float GetScaleFactorFromArea(float area)
+    {
+        if (area < MIN_TRIANGLE_AREA) return MIN_SCALE_FACTOR;
+        else if (area > MAX_TRIANGLE_AREA) return MAX_SCALE_FACTOR;
+        else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRIANGLE_AREA - MIN_TRIANGLE_AREA) * (area - MIN_TRIANGLE_AREA) + MIN_SCALE_FACTOR;
     }
 
     public bool CalculateTriangleArea(Vector3 p1, Vector3 p2, Vector3 p3, out float area)
     {
-        Vector3 vectorAB = p2 - p1;
-        Vector3 vectorAC = p3 - p1;
+        Vector3 vectorAB = (p2 - p1) * 100f;
+        Vector3 vectorAC = (p3 - p1) * 100f;
+        Vector3 vectorBC = (p3 - p2) * 100f;
+
+        if (vectorAB.sqrMagnitude < MIN_FLOAT || vectorAC.sqrMagnitude < MIN_FLOAT
+            || vectorBC.sqrMagnitude < MIN_FLOAT)
+        {
+            area = float.NaN;
+            return false;       
+        }
+        // _textbox.text = $"{vectorAB.magnitude}\n {vectorAC.magnitude}\n {vectorBC.magnitude}";
 
         Vector3 crossProduct = Vector3.Cross(vectorAB, vectorAC);
 
         area = crossProduct.magnitude / 2f;
 
-        if (area < _areaThreshold)
+        // _textbox.text = $"{area}";
+
+        if (area < MIN_FLOAT)
         {
             area = float.NaN;
             return false;
