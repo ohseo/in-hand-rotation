@@ -25,6 +25,7 @@ public class RotationInteractor : MonoBehaviour
     private LineRenderer _lineRenderer;
 
     private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false;
+    private bool _pinched = false;
     private int _scaleMode = 0; // 0: angle-based, 1: cmc-based
     private int _transferFunction = 0; // 0: Baseline, 1: linear, 2: accelerating(power), 3: decelerating(hyperbolic tangent)
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
@@ -129,7 +130,7 @@ public class RotationInteractor : MonoBehaviour
         else
         {
             // if (!Input.anyKey) _isReset = false;
-            if (!_isGrabbed) _isReset = false;
+            if (!_isGrabbed) { _isReset = false; _pinched = false; }
             if (_isGrabbed && !_isClutching) OnClutchStart?.Invoke();
             if (!_isGrabbed && _isClutching) OnClutchEnd?.Invoke();
             // if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd?.Invoke();
@@ -177,7 +178,7 @@ public class RotationInteractor : MonoBehaviour
 
         if (_isGrabbed)
         {
-            if (_isClutching)
+            if (_isClutching && !_pinched)
             {
                 if (_isReset)
                 {
@@ -332,7 +333,7 @@ public class RotationInteractor : MonoBehaviour
 
     public float GetScaleFactorFromArea(float area)
     {
-        if (area < MIN_TRIANGLE_AREA) return MIN_SCALE_FACTOR;
+        if (area < MIN_TRIANGLE_AREA) { _pinched = true; return MIN_SCALE_FACTOR; }
         else if (area > MAX_TRIANGLE_AREA) return MAX_SCALE_FACTOR;
         else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRIANGLE_AREA - MIN_TRIANGLE_AREA) * (area - MIN_TRIANGLE_AREA) + MIN_SCALE_FACTOR;
     }
@@ -584,6 +585,7 @@ public class RotationInteractor : MonoBehaviour
         _grabOffsetPosition = Vector3.zero;
         _grabOffsetRotation = Quaternion.identity;
         _outline.enabled = false;
+        _pinched = false;
     }
 
     public void StartClutching()
