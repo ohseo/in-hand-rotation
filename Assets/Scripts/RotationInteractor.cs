@@ -30,8 +30,8 @@ public class RotationInteractor : MonoBehaviour
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
-    private const float MIN_SCALE_FACTOR = 0.5f, MAX_SCALE_FACTOR = 2.0f, MIN_FLOAT = 1e-4f;
-    private const float MIN_TRIANGLE_AREA = 1f, MAX_TRIANGLE_AREA = 50f; // area is in cm2
+    private const float MIN_SCALE_FACTOR = 0f, MAX_SCALE_FACTOR = 10.0f, MIN_FLOAT = 1e-4f;
+    private const float MIN_TRIANGLE_AREA = 1f, MAX_TRIANGLE_AREA = 20f; // area is in cm2
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -128,9 +128,12 @@ public class RotationInteractor : MonoBehaviour
         if (_transferFunction == 0) _isClutching = false;
         else
         {
-            if (!Input.anyKey) _isReset = false;
-            if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd?.Invoke();
-            if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart?.Invoke();
+            // if (!Input.anyKey) _isReset = false;
+            if (!_isGrabbed) _isReset = false;
+            if (_isGrabbed && !_isClutching) OnClutchStart?.Invoke();
+            if (!_isGrabbed && _isClutching) OnClutchEnd?.Invoke();
+            // if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd?.Invoke();
+            // if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart?.Invoke();
             if (Input.anyKey && !_isClutching) ResetThumbOrigin();
         }
 
@@ -182,15 +185,18 @@ public class RotationInteractor : MonoBehaviour
                     {
                         _deltaTriangleP1Angle = _triangleP1Angle - _prevAngle;
                         Vector3 triangleAxis = _triangleRotation * Vector3.up;
-                        Quaternion deltaShearRotation, deltaTriangleRotation;
+                        Quaternion deltaShearRotation, deltaTriangleRotation, deltaTotalRotation;
                         if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(_deltaTriangleP1Angle, triangleAxis);
                         else deltaShearRotation = Quaternion.identity;
                         deltaTriangleRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
-                        deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
+                        // deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
+                        deltaTotalRotation = deltaShearRotation * deltaTriangleRotation;
+                        deltaTotalRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
                         if (deltaAngle < _triAngleThreshold)
                         {
-                            if (_scaleMode == 0) deltaTriangleRotation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
-                            _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
+                            if (_scaleMode == 0) deltaTotalRotation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
+                            // _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
+                            _cubeRotation = deltaTotalRotation * _prevCubeRotation;
                             _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
                         }
                         _prevCubeRotation = _cubeRotation;
