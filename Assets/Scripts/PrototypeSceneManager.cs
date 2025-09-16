@@ -13,6 +13,8 @@ public class PrototypeSceneManager : MonoBehaviour
     [SerializeField]
     private OVRSkeleton _ovrRightSkeleton, _ovrLeftSkeleton;
     [SerializeField]
+    private OVRHand _ovrRightHand, _ovrLeftHand;
+    [SerializeField]
     private GameObject _centerEyeAnchor;
     [SerializeField]
     private TextMeshProUGUI _text;
@@ -44,8 +46,8 @@ public class PrototypeSceneManager : MonoBehaviour
         GenerateDie();
         _rotationInteractor.SetCube(_die);
 
-        if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
-        else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
+        if (_isLeftHanded) { _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton); _rotationInteractor.SetOVRHand(_ovrLeftHand); }
+        else { _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton); _rotationInteractor.SetOVRHand(_ovrRightHand); }
 
         _rotationInteractor.SetTransferFunction(_transferFunction);
     }

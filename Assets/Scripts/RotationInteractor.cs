@@ -12,6 +12,7 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private bool _isShearFactorOn = true;
     private OVRSkeleton _ovrSkeleton;
+    private OVRHand _ovrHand;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _thumbMetacarpal, _wristBone;
 
     private GameObject _cube;
@@ -31,7 +32,7 @@ public class RotationInteractor : MonoBehaviour
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
-    private const float MIN_SCALE_FACTOR = 0f, MAX_SCALE_FACTOR = 10.0f, MIN_FLOAT = 1e-4f;
+    private const float MIN_SCALE_FACTOR = 0f, MAX_SCALE_FACTOR = 7.0f, MIN_FLOAT = 1e-4f;
     private const float MIN_TRIANGLE_AREA = 1f, MAX_TRIANGLE_AREA = 20f; // area is in cm2
     private Dictionary<KeyCode, Action> _keyActions;
 
@@ -46,7 +47,7 @@ public class RotationInteractor : MonoBehaviour
     Vector3 _triangleForward, _triangleUp;
 
     private Outline _outline;
-    private const float OUTLINE_WIDTH_DEFAULT = 5f, OUTLINE_WIDTH_CLUTCHING = 10f;
+    private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
     [SerializeField]
     private TextMeshProUGUI _textbox;
@@ -130,7 +131,7 @@ public class RotationInteractor : MonoBehaviour
         else
         {
             // if (!Input.anyKey) _isReset = false;
-            if (!_isGrabbed) { _isReset = false; _pinched = false; }
+            if (!_isGrabbed) { _isReset = false; _pinched = false; _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT; }
             if (_isGrabbed && !_isClutching) OnClutchStart?.Invoke();
             if (!_isGrabbed && _isClutching) OnClutchEnd?.Invoke();
             // if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd?.Invoke();
@@ -171,7 +172,8 @@ public class RotationInteractor : MonoBehaviour
         // _centroidPosition = GetWeightedTriangleCentroid(_scaledWorldThumbTipPosition, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
         if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
 
-        _textbox.text = $"{_angleScaleFactor}";
+        // _textbox.text = $"{_angleScaleFactor}";
+        _textbox.text = $"{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle)}";
         
 
         if (_isCentroidCentered) _centroidSphere.transform.position = _centroidPosition;
@@ -333,7 +335,7 @@ public class RotationInteractor : MonoBehaviour
 
     public float GetScaleFactorFromArea(float area)
     {
-        if (area < MIN_TRIANGLE_AREA) { _pinched = true; return MIN_SCALE_FACTOR; }
+        if (area < MIN_TRIANGLE_AREA) { _pinched = true; _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING; return MIN_SCALE_FACTOR; }
         else if (area > MAX_TRIANGLE_AREA) return MAX_SCALE_FACTOR;
         else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRIANGLE_AREA - MIN_TRIANGLE_AREA) * (area - MIN_TRIANGLE_AREA) + MIN_SCALE_FACTOR;
     }
@@ -555,6 +557,11 @@ public class RotationInteractor : MonoBehaviour
         _ovrSkeleton = s;
     }
 
+    public void SetOVRHand(OVRHand h)
+    {
+        _ovrHand = h;
+    }
+
     public void SetScaleMode(int i)
     {
         _scaleMode = i;
@@ -584,6 +591,7 @@ public class RotationInteractor : MonoBehaviour
         _isGrabbed = false;
         _grabOffsetPosition = Vector3.zero;
         _grabOffsetRotation = Quaternion.identity;
+        _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
         _outline.enabled = false;
         _pinched = false;
     }
@@ -597,7 +605,7 @@ public class RotationInteractor : MonoBehaviour
             ResetGrabOffset();
             _cubeRotation = Quaternion.identity;
         }
-        _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
+        // _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
         _isClutching = true;
     }
 

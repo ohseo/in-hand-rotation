@@ -5215,6 +5215,8 @@ MonoBehaviour:
   _targetPrefab: {fileID: 1618645656371774453, guid: 86a01932818dd4045bc2e13c8229874a, type: 3}
   _ovrRightSkeleton: {fileID: 643088644}
   _ovrLeftSkeleton: {fileID: 750940862}
+  _ovrRightHand: {fileID: 643088645}
+  _ovrLeftHand: {fileID: 750940863}
   _centerEyeAnchor: {fileID: 2139425078}
   _text: {fileID: 740122283}
   _rotationInteractor: {fileID: 94333789}
