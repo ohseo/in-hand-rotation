@@ -35,9 +35,9 @@ public class RotationInteractor : MonoBehaviour
     private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
-    private const float MIN_SCALE_FACTOR = 0.7f, MAX_SCALE_FACTOR = 1.4f, MIN_FLOAT = 1e-4f;
+    private const float MIN_SCALE_FACTOR = 0.25f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
     private const float MIN_TRIANGLE_AREA = 0.5f, MAX_TRIANGLE_AREA = 7f; // area is in cm2
-    private const float MIN_TRAVEL_DISTANCE = 1.5f, MAX_TRAVEL_DISTANCE = 10f;// distance is in cm
+    private const float MIN_TRAVEL_DISTANCE = 3f, MAX_TRAVEL_DISTANCE = 10f;// distance is in cm
     private const float MAX_CURL = 180f, MAX_THUMB_CURL = 90f;
     private const float MIN_FINGER_DISTANCE = 1.5f;
     private const float MIN_THUMB_ANGLE = 25f, MAX_THUMB_ANGLE = 60f;
@@ -62,7 +62,7 @@ public class RotationInteractor : MonoBehaviour
     // private string[] _transferText = { "linear", "power", "tanh" };
     private string[] _transferText = { "O", "A", "B", "C" };
 
-    private string _tempstr ="";
+    private string _tempstr = "";
 
     private bool _isCentroidCentered = false;
     private GameObject _centroidSphere;
@@ -170,16 +170,16 @@ public class RotationInteractor : MonoBehaviour
         // _centroidPosition = GetWeightedTriangleCentroid(_scaledWorldThumbTipPosition, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
         CalculateFingerDistance(out float indexDistance, out float middleDistance);
         float distance = GetFingerTravelDistance();
-        if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea) * GetScaleFactorFromFingers(distance);
+        if (isTriangleAreaValid) _angleScaleFactor = GetHarmonicMean(GetScaleFactorFromArea(_triangleArea), GetScaleFactorFromFingers(distance));
 
         // check clutching
         if (GetIndexFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "index curl, "; }
-        if (GetMiddleFingerCurl() > MAX_CURL) {_pinched = true; _tempstr += "middle curl, "; }
-        if (GetThumbCurl() > MAX_THUMB_CURL) {_pinched = true; _tempstr += "thumb curl, "; }
-        if (_triangleArea < MIN_TRIANGLE_AREA) {_pinched = true; _tempstr += "area, ";}
-        if ((indexDistance < MIN_FINGER_DISTANCE) && (middleDistance < MIN_FINGER_DISTANCE)) {_pinched = true; _tempstr += "distance, ";}
-        if (GetThumbAngle() < MIN_THUMB_ANGLE) {_pinched = true; _tempstr += "thumb angle small, "; }
-        if (GetThumbAngle() > MAX_THUMB_ANGLE) {_pinched = true; _tempstr += "thumb angle large, "; }
+        if (GetMiddleFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "middle curl, "; }
+        if (GetThumbCurl() > MAX_THUMB_CURL) { _pinched = true; _tempstr += "thumb curl, "; }
+        if (_triangleArea < MIN_TRIANGLE_AREA) { _pinched = true; _tempstr += "area, "; }
+        if ((indexDistance < MIN_FINGER_DISTANCE) && (middleDistance < MIN_FINGER_DISTANCE)) { _pinched = true; _tempstr += "distance, "; }
+        if (GetThumbAngle() < MIN_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle small, "; }
+        if (GetThumbAngle() > MAX_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle large, "; }
 
         // _textbox.text = $"{_angleScaleFactor}";
         // _textbox.text = $"{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle)}";
@@ -191,7 +191,8 @@ public class RotationInteractor : MonoBehaviour
         //                 + $"curl: {GetThumbCurl().ToString("0.00")}" + Environment.NewLine
         //                 + $"distance: {indexDistance.ToString("0.00")}, {middleDistance.ToString("0.00")}" + Environment.NewLine
         //                 + $"thumb: {GetThumbAngle().ToString("0.00")}";
-        _textbox.text = $"{distance.ToString("0.00")}" + Environment.NewLine + $"{_angleScaleFactor.ToString("0.00")}";
+        // _textbox.text = $"{distance.ToString("0.00")}" + Environment.NewLine + $"{_angleScaleFactor.ToString("0.00")}";
+        _textbox.text = "";
 
         if (_transferFunction == 0) _isClutching = false;
         else
@@ -389,6 +390,11 @@ public class RotationInteractor : MonoBehaviour
         if (distance < MIN_TRAVEL_DISTANCE) return MIN_SCALE_FACTOR;
         else if (distance > MAX_TRAVEL_DISTANCE) return MAX_SCALE_FACTOR;
         else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE) * (distance - MIN_TRAVEL_DISTANCE) + MIN_SCALE_FACTOR;
+    }
+
+    public float GetHarmonicMean(float a, float b)
+    {
+        return 2f / (1f / a + 1f / b);
     }
 
     public bool CalculateTriangleArea(Vector3 p1, Vector3 p2, Vector3 p3, out float area)
