@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TMPro;
+using System.Runtime.CompilerServices;
 
 public class RotationInteractor : MonoBehaviour
 {
@@ -14,6 +15,8 @@ public class RotationInteractor : MonoBehaviour
     private OVRSkeleton _ovrSkeleton;
     private OVRHand _ovrHand;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _thumbMetacarpal, _wristBone;
+    private OVRBone _indexMetacarpal, _indexProximal, _indexMiddle, _indexDistal;
+    private OVRBone _middleMetacarpal, _middleProximal, _middleMiddle, _middleDistal;
 
     private GameObject _cube;
 
@@ -21,7 +24,7 @@ public class RotationInteractor : MonoBehaviour
     private GameObject _thumbSphere, _indexSphere, _middleSphere;
     private float _sphereScale = 0.01f;
     private float _areaThreshold = 0.0001f, _magThreshold = 0.00001f, _dotThreshold = 0.999f;
-    private float _thumbAngleThreshold = 0.01f, _triAngleThreshold = 30f;
+    private float _thumbAngleThreshold = 0.01f, _triAngleThreshold = 10f;
 
     private LineRenderer _lineRenderer;
 
@@ -33,7 +36,8 @@ public class RotationInteractor : MonoBehaviour
     private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
     private const float MIN_SCALE_FACTOR = 0f, MAX_SCALE_FACTOR = 7.0f, MIN_FLOAT = 1e-4f;
-    private const float MIN_TRIANGLE_AREA = 1f, MAX_TRIANGLE_AREA = 20f; // area is in cm2
+    private const float MIN_TRIANGLE_AREA = 0.5f, MAX_TRIANGLE_AREA = 20f; // area is in cm2
+    private const float PINCH_THRESHOLD = 0.99f, CURL_THRESHOLD = 200f;
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -47,7 +51,7 @@ public class RotationInteractor : MonoBehaviour
     Vector3 _triangleForward, _triangleUp;
 
     private Outline _outline;
-    private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
+    private const float OUTLINE_WIDTH_DEFAULT = 10f, OUTLINE_WIDTH_CLUTCHING = 3f;
 
     [SerializeField]
     private TextMeshProUGUI _textbox;
@@ -127,18 +131,6 @@ public class RotationInteractor : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (_transferFunction == 0) _isClutching = false;
-        else
-        {
-            // if (!Input.anyKey) _isReset = false;
-            if (!_isGrabbed) { _isReset = false; _pinched = false; _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT; }
-            if (_isGrabbed && !_isClutching) OnClutchStart?.Invoke();
-            if (!_isGrabbed && _isClutching) OnClutchEnd?.Invoke();
-            // if (!Input.GetKey(KeyCode.Space) && _isClutching) OnClutchEnd?.Invoke();
-            // if (Input.GetKey(KeyCode.Space) && !_isClutching) OnClutchStart?.Invoke();
-            if (Input.anyKey && !_isClutching) ResetThumbOrigin();
-        }
-
         foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
 
         // _textbox.text = _transferText[_transferFunction];
@@ -172,15 +164,34 @@ public class RotationInteractor : MonoBehaviour
         // _centroidPosition = GetWeightedTriangleCentroid(_scaledWorldThumbTipPosition, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
         if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
 
+        // check clutching
+        if (_ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Index)) _pinched = true;
+        if (_ovrHand.GetFingerIsPinching(OVRHand.HandFinger.Middle)) _pinched = true;
+        if (GetIndexFingerCurl() > CURL_THRESHOLD) _pinched = true;
+        if (GetMiddleFingerCurl() > CURL_THRESHOLD) _pinched = true;
+        if (_triangleArea < MIN_TRIANGLE_AREA) _pinched = true;
+        // if (!_isGrabbed) _pinched = true;
+
         // _textbox.text = $"{_angleScaleFactor}";
-        _textbox.text = $"{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle)}";
-        
+        // _textbox.text = $"{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle)}";
+        // _textbox.text = $"{GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}";
+        _textbox.text = $"scale factor: {_angleScaleFactor.ToString("0.00")}" + Environment.NewLine
+                        + $"pinch strength: {_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Index).ToString("0.00")},{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle).ToString("0.00")}" + Environment.NewLine
+                        + $"curl: {GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}";
+
+        if (_transferFunction == 0) _isClutching = false;
+        else
+        {
+            if (_pinched && _isClutching) OnClutchEnd?.Invoke();
+            if (!_pinched && !_isClutching) OnClutchStart?.Invoke();
+            if (Input.anyKey && !_isClutching) ResetThumbOrigin();
+        }
 
         if (_isCentroidCentered) _centroidSphere.transform.position = _centroidPosition;
 
         if (_isGrabbed)
         {
-            if (_isClutching && !_pinched)
+            if (_isClutching) //  && !_pinched)
             {
                 if (_isReset)
                 {
@@ -251,6 +262,15 @@ public class RotationInteractor : MonoBehaviour
         _thumbTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbTip);
         _wristBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_Wrist);
         _thumbMetacarpal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbMetacarpal);
+
+        _indexMetacarpal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexMetacarpal);
+        _indexProximal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexProximal);
+        _indexMiddle = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexIntermediate);
+        _indexDistal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_IndexDistal);
+        _middleMetacarpal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_MiddleMetacarpal);
+        _middleProximal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_MiddleProximal);
+        _middleMiddle = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_MiddleIntermediate);
+        _middleDistal = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_MiddleDistal);
 
         _thumbSphere.transform.position = _thumbTipBone.Transform.position;
         _indexSphere.transform.position = _indexTipBone.Transform.position;
@@ -335,7 +355,8 @@ public class RotationInteractor : MonoBehaviour
 
     public float GetScaleFactorFromArea(float area)
     {
-        if (area < MIN_TRIANGLE_AREA) { _pinched = true; _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING; return MIN_SCALE_FACTOR; }
+        // if (area < MIN_TRIANGLE_AREA) { _pinched = true; _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING; return MIN_SCALE_FACTOR; }
+        if (area < MIN_TRIANGLE_AREA) return MIN_SCALE_FACTOR;
         else if (area > MAX_TRIANGLE_AREA) return MAX_SCALE_FACTOR;
         else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRIANGLE_AREA - MIN_TRIANGLE_AREA) * (area - MIN_TRIANGLE_AREA) + MIN_SCALE_FACTOR;
     }
@@ -413,6 +434,38 @@ public class RotationInteractor : MonoBehaviour
         if (deg < 10f) return 2f;
         else if (deg > 90f) return 1f;
         else return (170f - deg) / 80f;
+    }
+
+    private float GetIndexFingerCurl()
+    {
+        Vector3 metacarpalDir = (_indexProximal.Transform.position - _indexMetacarpal.Transform.position);
+        Vector3 proximalDir = (_indexMiddle.Transform.position - _indexProximal.Transform.position).normalized;
+        Vector3 middleDir = (_indexDistal.Transform.position - _indexMiddle.Transform.position).normalized;
+        Vector3 distalDir = (_indexTipBone.Transform.position - _indexDistal.Transform.position).normalized;
+
+        float proximalAngle = Vector3.Angle(metacarpalDir, proximalDir);
+        float middleAngle = Vector3.Angle(proximalDir, middleDir);
+        float distalAngle = Vector3.Angle(middleDir, distalDir);
+
+        float rawCurl = proximalAngle + middleAngle + distalAngle;
+
+        return rawCurl;
+    }
+
+    private float GetMiddleFingerCurl()
+    {
+        Vector3 metacarpalDir = (_middleProximal.Transform.position - _middleMetacarpal.Transform.position);
+        Vector3 proximalDir = (_middleMiddle.Transform.position - _middleProximal.Transform.position).normalized;
+        Vector3 middleDir = (_middleDistal.Transform.position - _middleMiddle.Transform.position).normalized;
+        Vector3 distalDir = (_middleTipBone.Transform.position - _middleDistal.Transform.position).normalized;
+
+        float proximalAngle = Vector3.Angle(metacarpalDir, proximalDir);
+        float middleAngle = Vector3.Angle(proximalDir, middleDir);
+        float distalAngle = Vector3.Angle(middleDir, distalDir);
+
+        float rawCurl = proximalAngle + middleAngle + distalAngle;
+
+        return rawCurl;
     }
 
     public void GetTriangleTransform(out Vector3 pos, out Quaternion rot)
@@ -591,7 +644,7 @@ public class RotationInteractor : MonoBehaviour
         _isGrabbed = false;
         _grabOffsetPosition = Vector3.zero;
         _grabOffsetRotation = Quaternion.identity;
-        _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
+        // _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
         _outline.enabled = false;
         _pinched = false;
     }
@@ -605,7 +658,7 @@ public class RotationInteractor : MonoBehaviour
             ResetGrabOffset();
             _cubeRotation = Quaternion.identity;
         }
-        // _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
+        _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
         _isClutching = true;
     }
 
