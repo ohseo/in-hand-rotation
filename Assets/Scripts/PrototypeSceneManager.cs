@@ -28,12 +28,12 @@ public class PrototypeSceneManager : MonoBehaviour
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
     private const float INIT_ROTATION_DEG = 135f;
-    private Vector3 _initPosition = new Vector3(0.1f, 1.1f, 0.3f);
+    private Vector3 _initPosition = new Vector3(0.1f, 1.0f, 0.3f);
     private Vector3 _targetOffsetPosition;
     private Quaternion _targetOffsetRotation;
-    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
+    private const float POSITION_THRESHOLD = 0.015f, ROTATION_THRESHOLD_DEG = 10f;
     private bool _isOnTarget = false, _isInTrial = false;
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
+    private const float DWELL_THRESHOLD = 0.5f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration, _trialDuration;
 
     private DieGrabHandler _grabHandler;
