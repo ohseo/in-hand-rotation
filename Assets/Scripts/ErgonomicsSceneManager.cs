@@ -82,7 +82,7 @@ public class ErgonomicsSceneManager : MonoBehaviour
         if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
         else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
 
-        _rotationInteractor.SetTransferFunction(TRANSFERFUNCTION);
+        // _rotationInteractor.SetTransferFunction(TRANSFERFUNCTION);
 
         _text.text = $"Trial {_trialNum}/{MAX_TRIAL_NUM}, Set {_setNum}/{MAX_SET_NUM}";
     }

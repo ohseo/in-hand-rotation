@@ -90,7 +90,7 @@ public class AxisSceneManager : MonoBehaviour
         if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
         else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
 
-        _rotationInteractor.SetTransferFunction(EXP_CONDITION);
+        // _rotationInteractor.SetTransferFunction(EXP_CONDITION);
 
         _text.text = $"Set {_setNum}/{MAX_SET_NUM}, Trial {_trialNum % (_initRotationDeg.Count * _rotationAxis.Count) }/{_maxTrialNum/MAX_SET_NUM}";
 

@@ -21,9 +21,7 @@ public class PrototypeSceneManager : MonoBehaviour
     [SerializeField]
     private RotationInteractor _rotationInteractor;
     [SerializeField]
-    private int _transferFunction = 0; // 0: Baseline, 1: Linear, 2: Power, 3: Tanh
-    [SerializeField]
-    private int _scaleMode = 0; // 0: angle-based, 1: cmc-based
+    private bool _isBaseline = false;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
@@ -46,10 +44,10 @@ public class PrototypeSceneManager : MonoBehaviour
         GenerateDie();
         _rotationInteractor.SetCube(_die);
 
-        if (_isLeftHanded) { _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton); _rotationInteractor.SetOVRHand(_ovrLeftHand); }
-        else { _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton); _rotationInteractor.SetOVRHand(_ovrRightHand); }
+        if (_isLeftHanded) { _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);}
+        else { _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);}
 
-        _rotationInteractor.SetTransferFunction(_transferFunction);
+        _rotationInteractor.SetBaseline(_isBaseline);
     }
 
     // Start is called before the first frame update

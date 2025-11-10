@@ -230,14 +230,14 @@ public class AxisLogManager : MonoBehaviour
         _rotationInteractor.GetIndexTipWorldTransform(out _indexTipWorldPosition, out _indexTipWorldRotation);
         _rotationInteractor.GetMiddleTipWorldTransform(out _middleTipWorldPosition, out _middleTipWorldRotation);
         _rotationInteractor.GetMetacarpalWorldTransform(out _metacarpalWorldPosition, out _metacarpalWorldRotation);
-        _rotationInteractor.GetModifiedThumbTipWorldPosition(out _modifiedThumbTipWorldPosition);
+        // _rotationInteractor.GetModifiedThumbTipWorldPosition(out _modifiedThumbTipWorldPosition);
 
         // local
         _rotationInteractor.GetThumbTipLocalTransform(out _thumbTipLocalPosition, out _thumbTipLocalRotation);
         _rotationInteractor.GetIndexTipLocalTransform(out _indexTipLocalPosition, out _indexTipLocalRotation);
         _rotationInteractor.GetMiddleTipLocalTransform(out _middleTipLocalPosition, out _middleTipLocalRotation);
         _rotationInteractor.GetMetacarpalLocalTransform(out _metacarpalLocalPosition, out _metacarpalLocalRotation);
-        _rotationInteractor.GetModifiedThumbTipLocalPosition(out _modifiedThumbTipLocalPosition);
+        // _rotationInteractor.GetModifiedThumbTipLocalPosition(out _modifiedThumbTipLocalPosition);
     }
 
     public void UpdateModificationData()

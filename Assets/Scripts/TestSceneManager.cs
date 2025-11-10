@@ -57,7 +57,7 @@ public class TestSceneManager : MonoBehaviour
         if (_isLeftHanded) _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);
         else _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);
 
-        _rotationInteractor.SetTransferFunction(_expCondition);
+        // _rotationInteractor.SetTransferFunction(_expCondition);
 
     }
 

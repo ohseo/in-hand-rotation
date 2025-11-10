@@ -12,7 +12,6 @@ public class RotationInteractor : MonoBehaviour
     [SerializeField]
     private bool _isShearFactorOn = true;
     private OVRSkeleton _ovrSkeleton;
-    private OVRHand _ovrHand;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _thumbMetacarpal, _wristBone;
     private OVRBone _indexMetacarpal, _indexProximal, _indexMiddle, _indexDistal;
     private OVRBone _middleMetacarpal, _middleProximal, _middleMiddle, _middleDistal;
@@ -30,10 +29,9 @@ public class RotationInteractor : MonoBehaviour
 
     private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false;
     private bool _pinched = false;
-    private int _scaleMode = 0; // 0: angle-based, 1: cmc-based
-    private int _transferFunction = 0; // 0: Baseline, 1: linear, 2: accelerating(power), 3: decelerating(hyperbolic tangent)
-    private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
-    private double _powFactorB = 2d, _tanhFactorB = 3.657d;
+    private bool _isBaseline = false;
+    // private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
+    // private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
     private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
     private const float MIN_TRIANGLE_AREA = 0.5f, MAX_TRIANGLE_AREA = 7f; // area is in cm2
@@ -45,7 +43,6 @@ public class RotationInteractor : MonoBehaviour
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
     private Quaternion _worldWristRotation, _deltaThumbRotation, _scaledDeltaRotation;
-    private Vector3 _scaledWorldThumbTipPosition, _scaledThumbTipPosition;
     private Quaternion _cubeRotation, _prevCubeRotation;
     private Quaternion _prevTriangleRotation, _triangleRotation;
     private float _thumbWeight, _triangleArea, _triangleP1Angle, _deltaTriangleP1Angle, _prevAngle;
@@ -117,14 +114,10 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.KeypadEnter, () => _cube.transform.rotation = _wristBone.Transform.rotation},
             {KeyCode.KeypadMinus, () => ToggleComponentsVisibility(false)},
             {KeyCode.KeypadPlus, () => ToggleComponentsVisibility(true)},
-            {KeyCode.Keypad0, () => _transferFunction = 0},
-            {KeyCode.Keypad1, () => _transferFunction = 1},
-            {KeyCode.Keypad2, () => _transferFunction = 2},
-            {KeyCode.Keypad3, () => _transferFunction = 3},
+            {KeyCode.Keypad0, () => _isBaseline = true},
+            {KeyCode.Keypad1, () => _isBaseline = false},
             {KeyCode.Keypad5, () => _isCentroidCentered = true},
-            {KeyCode.Keypad6, () => _isCentroidCentered = false},
-            {KeyCode.Keypad7, () => _scaleMode = 0},
-            {KeyCode.Keypad8, () => _scaleMode = 1}
+            {KeyCode.Keypad6, () => _isCentroidCentered = false}
         };
 
         _cube.GetComponentInChildren<DieGrabHandler>().SetRotationInteractor(this);
@@ -139,35 +132,27 @@ public class RotationInteractor : MonoBehaviour
     {
         foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
 
-        // _textbox.text = _transferText[_transferFunction];
-
         // transforms are on the local coordinates based on the wrist if not stated otherwise
         _worldWristRotation = _wristBone.Transform.rotation;
 
-        if (_scaleMode == 1) _scaledThumbTipPosition = TransferBoneMovement();
-        else _scaledThumbTipPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
-
+        Vector3 ThumbTipPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
         Vector3 indexTipPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         Vector3 middleTipPosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
-        _scaledWorldThumbTipPosition = _wristBone.Transform.TransformPoint(_scaledThumbTipPosition);
 
-        // _thumbSphere.transform.position = worldThumbPosition;
-        // _thumbSphere.transform.position = _thumbTipBone.Transform.position;
-        _thumbSphere.transform.position = _scaledWorldThumbTipPosition;
+        _thumbSphere.transform.position = _thumbTipBone.Transform.position;
         _indexSphere.transform.position = _indexTipBone.Transform.position;
         _middleSphere.transform.position = _middleTipBone.Transform.position;
 
-        _lineRenderer.SetPosition(0, _scaledWorldThumbTipPosition);
+        _lineRenderer.SetPosition(0, _thumbTipBone.Transform.position);
         _lineRenderer.SetPosition(1, _indexTipBone.Transform.position);
         _lineRenderer.SetPosition(2, _middleTipBone.Transform.position);
-        _lineRenderer.SetPosition(3, _scaledWorldThumbTipPosition);
+        _lineRenderer.SetPosition(3, _thumbTipBone.Transform.position);
 
-        bool isAngleValid = CalculateAngleAtVertex(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
-        bool isTriangleValid = CalculateTriangleOrientation(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
-        bool isTriangleAreaValid = CalculateTriangleArea(_scaledThumbTipPosition, indexTipPosition, middleTipPosition, out float _triangleArea);
+        bool isAngleValid = CalculateAngleAtVertex(ThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
+        bool isTriangleValid = CalculateTriangleOrientation(ThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
+        bool isTriangleAreaValid = CalculateTriangleArea(ThumbTipPosition, indexTipPosition, middleTipPosition, out float _triangleArea);
         // position cube with bones since spheres are modified. use world coordinates here.
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
-        // _centroidPosition = GetWeightedTriangleCentroid(_scaledWorldThumbTipPosition, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
         CalculateFingerDistance(out float indexDistance, out float middleDistance);
         float distance = GetFingerTravelDistance();
         // if (isTriangleAreaValid) _angleScaleFactor = GetHarmonicMean(GetScaleFactorFromArea(_triangleArea), GetScaleFactorFromFingers(distance));
@@ -197,7 +182,7 @@ public class RotationInteractor : MonoBehaviour
         // _textbox.text = $"{distance.ToString("0.00")}" + Environment.NewLine + $"{_angleScaleFactor.ToString("0.00")}";
         // _textbox.text = "";
 
-        if (_transferFunction == 0) _isClutching = false;
+        if (_isBaseline) _isClutching = false;
         else
         {
             if (_pinched && _isClutching) OnClutchEnd?.Invoke();
@@ -225,7 +210,7 @@ public class RotationInteractor : MonoBehaviour
                         deltaTotalRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
                         if (deltaAngle < _triAngleThreshold)
                         {
-                            if (_scaleMode == 0) deltaTotalRotation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
+                            deltaTotalRotation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
                             // _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
                             _cubeRotation = deltaTotalRotation * _prevCubeRotation;
                             _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
@@ -338,23 +323,9 @@ public class RotationInteractor : MonoBehaviour
         _deltaThumbRotation.ToAngleAxis(out float angle, out Vector3 axis);
 
         if (angle < _thumbAngleThreshold) return thumbTipPosition;
-        if (_transferFunction == 0) return thumbTipPosition;
 
         double angleRadian = angle / 180.0 * Math.PI;
         float modifiedAngle = angle;
-
-        if (_transferFunction == 1)
-        {
-            modifiedAngle = angle;
-        }
-        else if (_transferFunction == 2)
-        {
-            modifiedAngle = _powFactorA * (float)Math.Pow(angleRadian, _powFactorB) * 180f / (float)Math.PI;
-        }
-        else if (_transferFunction == 3)
-        {
-            modifiedAngle = _tanhFactorA * (float)Math.Tanh(_tanhFactorB * angleRadian) * 180f / (float)Math.PI;
-        }
 
         _scaledDeltaRotation = Quaternion.AngleAxis(modifiedAngle, axis);
         Quaternion scaledThumbRotation = _scaledDeltaRotation * _origScaledThumbRotation;
@@ -604,11 +575,6 @@ public class RotationInteractor : MonoBehaviour
         rotation = _thumbMetacarpal.Transform.rotation;
     }
 
-    public void GetModifiedThumbTipWorldPosition(out Vector3 position)
-    {
-        position = _scaledWorldThumbTipPosition;
-    }
-
     public void GetThumbTipLocalTransform(out Vector3 position, out Quaternion rotation)
     {
         position = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
@@ -631,11 +597,6 @@ public class RotationInteractor : MonoBehaviour
     {
         position = _wristBone.Transform.InverseTransformPoint(_thumbMetacarpal.Transform.position);
         rotation = Quaternion.Inverse(_worldWristRotation) * _thumbMetacarpal.Transform.rotation;
-    }
-
-    public void GetModifiedThumbTipLocalPosition(out Vector3 position)
-    {
-        position = _scaledThumbTipPosition;
     }
 
     public void GetDeltaMetacarpalRotation(out Quaternion rotation, out float angle, out Vector3 axis)
@@ -683,24 +644,14 @@ public class RotationInteractor : MonoBehaviour
         _cube = cube;
     }
 
-    public void SetTransferFunction(int i)
+    public void SetBaseline(bool b)
     {
-        _transferFunction = i;
+        _isBaseline = b;
     }
 
     public void SetOVRSkeleton(OVRSkeleton s)
     {
         _ovrSkeleton = s;
-    }
-
-    public void SetOVRHand(OVRHand h)
-    {
-        _ovrHand = h;
-    }
-
-    public void SetScaleMode(int i)
-    {
-        _scaleMode = i;
     }
 
     public void OnGrab()
