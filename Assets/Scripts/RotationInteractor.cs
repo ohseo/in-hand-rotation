@@ -23,13 +23,15 @@ public class RotationInteractor : MonoBehaviour
     private GameObject _thumbSphere, _indexSphere, _middleSphere;
     private float _sphereScale = 0.01f;
     private float _areaThreshold = 0.0001f, _magThreshold = 0.00001f, _dotThreshold = 0.999f;
-    private float _thumbAngleThreshold = 0.01f, _triAngleThreshold = 10f;
+
 
     private LineRenderer _lineRenderer;
 
-    private bool _isGrabbed = false, _isClutching = false, _isReset = false, _isOnTarget = false;
-    private bool _pinched = false;
+    private bool _isGrabbed = false, _isRotating = false, _isOnTarget = false;
+    private bool _pinched = false, _dwelled = false;
+    private float _clutchDwellDuration = 0f;
     private bool _isBaseline = false;
+    private int _clutchingMethod = 0; // 0: pinch, 1: dwell
     // private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     // private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
@@ -39,32 +41,33 @@ public class RotationInteractor : MonoBehaviour
     private const float MAX_CURL = 200f, MAX_THUMB_CURL = 90f;
     private const float MIN_FINGER_DISTANCE = 1.5f;
     private const float MIN_THUMB_ANGLE = 25f, MAX_THUMB_ANGLE = 60f;
+    private const float MAX_ANGLE_BTW_FRAMES = 10f;
+    private const float CLUTCH_DWELL_TIME = 1f, CLUTCH_DWELL_ROTATION = 1f;
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
     private Quaternion _worldWristRotation, _deltaThumbRotation, _scaledDeltaRotation;
     private Quaternion _cubeRotation, _prevCubeRotation;
     private Quaternion _prevTriangleRotation, _triangleRotation;
-    private float _thumbWeight, _triangleArea, _triangleP1Angle, _deltaTriangleP1Angle, _prevAngle;
+    private float _thumbWeight, _triangleArea, _triangleP1Angle, _deltaTriangleP1Angle, _prevP1Angle;
+    private float _prevDeltaAngle;
     private Vector3 _grabOffsetPosition, _centroidPosition;
     private Quaternion _grabOffsetRotation;
-    Vector3 _triangleForward, _triangleUp;
-    Vector3 _origThumbPosition, _origIndexPosition, _origMiddlePosition;
+    private Vector3 _triangleForward, _triangleUp;
+    private Vector3 _origThumbPosition, _origIndexPosition, _origMiddlePosition;
 
     private Outline _outline;
-    private const float OUTLINE_WIDTH_DEFAULT = 10f, OUTLINE_WIDTH_CLUTCHING = 3f;
+    private const float OUTLINE_WIDTH_CLUTCHING = 10f, OUTLINE_WIDTH_DEFAULT = 3f;
 
     [SerializeField]
     private TextMeshProUGUI _textbox;
-    // private string[] _transferText = { "linear", "power", "tanh" };
-    private string[] _transferText = { "O", "A", "B", "C" };
 
     private string _tempstr = "";
 
     private bool _isCentroidCentered = true;
     private GameObject _centroidSphere;
 
-    public event Action OnClutchStart, OnClutchEnd;
+    public event Action OnClutchEnd, OnClutchStart;
 
     void Awake()
     {
@@ -117,7 +120,9 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.Keypad0, () => _isBaseline = true},
             {KeyCode.Keypad1, () => _isBaseline = false},
             {KeyCode.Keypad5, () => _isCentroidCentered = true},
-            {KeyCode.Keypad6, () => _isCentroidCentered = false}
+            {KeyCode.Keypad6, () => _isCentroidCentered = false},
+            {KeyCode.Keypad2, () => _clutchingMethod = 0},
+            {KeyCode.Keypad3, () => _clutchingMethod = 1}
         };
 
         _cube.GetComponentInChildren<DieGrabHandler>().SetRotationInteractor(this);
@@ -167,58 +172,89 @@ public class RotationInteractor : MonoBehaviour
         if ((indexDistance < MIN_FINGER_DISTANCE) && (middleDistance < MIN_FINGER_DISTANCE)) { _pinched = true; _tempstr += "distance, "; }
         // if (GetThumbAngle() < MIN_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle small, "; }
         // if (GetThumbAngle() > MAX_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle large, "; }
-
-        _textbox.text = $"{_isCentroidCentered}";
-        // _textbox.text = $"{_angleScaleFactor}";
-        // _textbox.text = $"{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle)}";
-        // _textbox.text = $"{GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}";
-        // _textbox.text = $"triangle area: {_triangleArea.ToString("0.00")}" + Environment.NewLine
-        //                 + $"scale factor: {_angleScaleFactor.ToString("0.00")}" + Environment.NewLine
-        //                 // + $"pinch strength: {_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Index).ToString("0.00")},{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle).ToString("0.00")}" + Environment.NewLine
-        //                 + $"curl: {GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}" + Environment.NewLine
-        //                 + $"curl: {GetThumbCurl().ToString("0.00")}" + Environment.NewLine
-        //                 + $"distance: {indexDistance.ToString("0.00")}, {middleDistance.ToString("0.00")}" + Environment.NewLine
-        //                 + $"thumb: {GetThumbAngle().ToString("0.00")}";
-        // _textbox.text = $"{distance.ToString("0.00")}" + Environment.NewLine + $"{_angleScaleFactor.ToString("0.00")}";
-        // _textbox.text = "";
-
-        if (_isBaseline) _isClutching = false;
+        if (_prevDeltaAngle < CLUTCH_DWELL_ROTATION)
+        {
+            _clutchDwellDuration += Time.deltaTime;
+            // _textbox.text = $"{_clutchDwellDuration}";
+            if (_clutchDwellDuration > CLUTCH_DWELL_TIME)
+            {
+                _dwelled = true;
+                _textbox.text = "Clutching Start";
+            }
+        }
         else
         {
-            if (_pinched && _isClutching) OnClutchEnd?.Invoke();
-            if (!_pinched && !_isClutching) OnClutchStart?.Invoke();
+            _dwelled = false;
+        }
+
+        // _textbox.text = $"{_isCentroidCentered}";
+            // _textbox.text = $"{_angleScaleFactor}";
+            // _textbox.text = $"{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle)}";
+            // _textbox.text = $"{GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}";
+            // _textbox.text = $"triangle area: {_triangleArea.ToString("0.00")}" + Environment.NewLine
+            //                 + $"scale factor: {_angleScaleFactor.ToString("0.00")}" + Environment.NewLine
+            //                 // + $"pinch strength: {_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Index).ToString("0.00")},{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle).ToString("0.00")}" + Environment.NewLine
+            //                 + $"curl: {GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}" + Environment.NewLine
+            //                 + $"curl: {GetThumbCurl().ToString("0.00")}" + Environment.NewLine
+            //                 + $"distance: {indexDistance.ToString("0.00")}, {middleDistance.ToString("0.00")}" + Environment.NewLine
+            //                 + $"thumb: {GetThumbAngle().ToString("0.00")}";
+            // _textbox.text = $"{distance.ToString("0.00")}" + Environment.NewLine + $"{_angleScaleFactor.ToString("0.00")}";
+            // _textbox.text = "";
+
+        if (_isBaseline) _isRotating = false;
+        else if (_clutchingMethod == 0)
+        {
+            if (_pinched && _isRotating) OnClutchStart?.Invoke();
+            if (!_pinched && !_isRotating) OnClutchEnd?.Invoke();
+        }
+        else if (_clutchingMethod == 1)
+        {
+            if (_dwelled && _isRotating) OnClutchStart?.Invoke();
+            if (!_dwelled && !_isRotating) OnClutchEnd?.Invoke();
         }
 
         if (_isCentroidCentered) _centroidSphere.transform.position = _centroidPosition;
 
         if (_isGrabbed)
         {
-            if (_isClutching) //  && !_pinched)
+            if (_isRotating)
             {
-                if (_isReset)
+                if (isAngleValid && isTriangleValid && isTriangleAreaValid)
                 {
-                    if (isAngleValid && isTriangleValid && isTriangleAreaValid)
+                    _deltaTriangleP1Angle = _triangleP1Angle - _prevP1Angle;
+                    Vector3 triangleAxis = _triangleRotation * Vector3.up;
+                    Quaternion deltaShearRotation, deltaTriangleRotation, deltaTotalRotation;
+                    if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(_deltaTriangleP1Angle, triangleAxis);
+                    else deltaShearRotation = Quaternion.identity;
+                    deltaTriangleRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
+                    // deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
+                    deltaTotalRotation = deltaShearRotation * deltaTriangleRotation;
+                    deltaTotalRotation.ToAngleAxis(out _prevDeltaAngle, out Vector3 deltaAxis);
+                    if (_prevDeltaAngle < MAX_ANGLE_BTW_FRAMES)
                     {
-                        _deltaTriangleP1Angle = _triangleP1Angle - _prevAngle;
-                        Vector3 triangleAxis = _triangleRotation * Vector3.up;
-                        Quaternion deltaShearRotation, deltaTriangleRotation, deltaTotalRotation;
-                        if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(_deltaTriangleP1Angle, triangleAxis);
-                        else deltaShearRotation = Quaternion.identity;
-                        deltaTriangleRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
-                        // deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
-                        deltaTotalRotation = deltaShearRotation * deltaTriangleRotation;
-                        deltaTotalRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
-                        if (deltaAngle < _triAngleThreshold)
-                        {
-                            deltaTotalRotation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
-                            // _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
-                            _cubeRotation = deltaTotalRotation * _prevCubeRotation;
-                            _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
-                        }
-                        _prevCubeRotation = _cubeRotation;
+                        deltaTotalRotation = Quaternion.AngleAxis(_prevDeltaAngle * _angleScaleFactor, deltaAxis);
+                        // _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
+                        _cubeRotation = deltaTotalRotation * _prevCubeRotation;
+                        _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
                     }
+                    if (_prevDeltaAngle < CLUTCH_DWELL_ROTATION)
+                    {
+                        _clutchDwellDuration += Time.deltaTime;
+                        // _textbox.text = $"{_clutchDwellDuration}";
+                        if (_clutchDwellDuration > CLUTCH_DWELL_TIME)
+                        {
+                            _dwelled = true;
+                            _textbox.text = "Clutching Start";
+                        }
+                    }
+                    else
+                    {
+                        _textbox.text = "Clutching should end";
+                        _clutchDwellDuration = 0f;
+                        _dwelled = false;
+                    }
+                    _prevCubeRotation = _cubeRotation;
                 }
-                else _isReset = true;
             }
             else
             {
@@ -231,7 +267,7 @@ public class RotationInteractor : MonoBehaviour
 
         if (isAngleValid && isTriangleValid && isTriangleAreaValid)
         {
-            _prevAngle = _triangleP1Angle;
+            _prevP1Angle = _triangleP1Angle;
             _prevTriangleRotation = _triangleRotation;
         }
     }
@@ -290,7 +326,8 @@ public class RotationInteractor : MonoBehaviour
         _worldWristRotation = _wristBone.Transform.rotation;
         ResetThumbOrigin();
         ResetFingersOrigin();
-        _prevAngle = 0f;
+        _prevP1Angle = 0f;
+        _prevDeltaAngle = 0f;
         _prevTriangleRotation = Quaternion.identity;
         // prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
         _prevCubeRotation = Quaternion.identity;
@@ -310,30 +347,6 @@ public class RotationInteractor : MonoBehaviour
             _centroidSphere.GetComponent<Renderer>().enabled = b;
         }
         _lineRenderer.enabled = b;
-    }
-
-    private Vector3 TransferBoneMovement()
-    {
-        Quaternion worldThumbRotation = _thumbMetacarpal.Transform.rotation;
-
-        Vector3 thumbPosition = _wristBone.Transform.InverseTransformPoint(_thumbMetacarpal.Transform.position);
-        Vector3 thumbTipPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
-        Quaternion thumbRotation = Quaternion.Inverse(_worldWristRotation) * worldThumbRotation;
-        _deltaThumbRotation = thumbRotation * Quaternion.Inverse(_origThumbRotation);
-        _deltaThumbRotation.ToAngleAxis(out float angle, out Vector3 axis);
-
-        if (angle < _thumbAngleThreshold) return thumbTipPosition;
-
-        double angleRadian = angle / 180.0 * Math.PI;
-        float modifiedAngle = angle;
-
-        _scaledDeltaRotation = Quaternion.AngleAxis(modifiedAngle, axis);
-        Quaternion scaledThumbRotation = _scaledDeltaRotation * _origScaledThumbRotation;
-
-        Vector3 localTipPosition = _thumbMetacarpal.Transform.InverseTransformPoint(_thumbTipBone.Transform.position); // local based on thumb metacarpal
-        Vector3 scaledTipPosition = thumbPosition + scaledThumbRotation * localTipPosition;
-
-        return scaledTipPosition;
     }
 
     public Vector3 GetTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3)
@@ -661,6 +674,8 @@ public class RotationInteractor : MonoBehaviour
         ResetFingersOrigin();
         _outline.enabled = true;
         _pinched = false;
+        _dwelled = false;
+        _clutchDwellDuration = 0f;
     }
 
     public void OnTarget()
@@ -683,9 +698,11 @@ public class RotationInteractor : MonoBehaviour
         // _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
         _outline.enabled = false;
         _pinched = false;
+        _dwelled = false;
+        _clutchDwellDuration = 0f;
     }
 
-    public void StartClutching()
+    public void EndClutching()
     {
         ResetThumbOrigin();
         ResetFingersOrigin();
@@ -695,14 +712,14 @@ public class RotationInteractor : MonoBehaviour
             ResetGrabOffset();
             _cubeRotation = Quaternion.identity;
         }
-        _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
-        _isClutching = true;
+        _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
+        _isRotating = true;
     }
 
-    public void EndClutching()
+    public void StartClutching()
     {
-        _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
-        _isClutching = false;
+        _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
+        _isRotating = false;
         _tempstr = "";
     }
 
@@ -712,10 +729,10 @@ public class RotationInteractor : MonoBehaviour
         set { _isGrabbed = value; }
     }
 
-    public bool IsClutching
+    public bool IsRotating
     {
-        get { return _isClutching; }
-        set { _isClutching = value; }
+        get { return _isRotating; }
+        set { _isRotating = value; }
     }
 
     public bool IsOnTarget

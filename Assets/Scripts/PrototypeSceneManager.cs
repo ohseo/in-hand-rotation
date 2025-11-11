@@ -71,9 +71,9 @@ public class PrototypeSceneManager : MonoBehaviour
 
         _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
 
-        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
-
         _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
+
+        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
 
         OnTarget += _rotationInteractor.OnTarget;
         OnTarget += _releaseHandler.OnTarget;

@@ -100,12 +100,12 @@ public class EvaluationSceneManager : MonoBehaviour
         _releaseHandler.OnRelease += () => { OnEvent?.Invoke("Release"); };
 
         // clutch start
-        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
-        _rotationInteractor.OnClutchStart += () => { OnEvent?.Invoke("Clutch Start"); };
+        _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
+        _rotationInteractor.OnClutchEnd += () => { OnEvent?.Invoke("Clutch Start"); };
 
         // clutch end
-        _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
-        _rotationInteractor.OnClutchEnd += () => { OnEvent?.Invoke("Clutch End"); };
+        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
+        _rotationInteractor.OnClutchStart += () => { OnEvent?.Invoke("Clutch End"); };
 
         // on target
         OnTarget += _rotationInteractor.OnTarget;
@@ -287,7 +287,7 @@ public class EvaluationSceneManager : MonoBehaviour
     public void GetStatus(out bool isGrabbing, out bool isClutching, out bool isOverlapped, out bool isTimeout)
     {
         isGrabbing = _rotationInteractor.IsGrabbed;
-        isClutching = _rotationInteractor.IsClutching;
+        isClutching = _rotationInteractor.IsRotating;
         isOverlapped = _isOnTarget;
         isTimeout = _isTimeout;
     }

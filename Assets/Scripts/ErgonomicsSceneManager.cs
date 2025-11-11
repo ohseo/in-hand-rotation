@@ -122,11 +122,11 @@ public class ErgonomicsSceneManager : MonoBehaviour
         // _releaseHandler.OnRelease += () => { OnEvent?.Invoke("Release"); };
 
         // clutch start
-        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
+        _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
         // _rotationInteractor.OnClutchStart += () => { OnEvent?.Invoke("Clutch Start"); };
 
         // clutch end
-        _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
+        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
         // _rotationInteractor.OnClutchEnd += () => { OnEvent?.Invoke("Clutch End"); };
 
         // on target
