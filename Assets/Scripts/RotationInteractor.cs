@@ -38,11 +38,13 @@ public class RotationInteractor : MonoBehaviour
     private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
     private const float MIN_TRIANGLE_AREA = 0.5f, MAX_TRIANGLE_AREA = 7f; // area is in cm2
     private const float MIN_TRAVEL_DISTANCE = 3f, MAX_TRAVEL_DISTANCE = 10f; // distance is in cm
-    private const float MAX_CURL = 200f, MAX_THUMB_CURL = 90f;
+    private const float MAX_CURL = 180f, MAX_THUMB_CURL = 90f;
+    private const float MAX_PROXIMAL_CURL = 70f, MAX_MIDDLE_CURL = 95f, MAX_DISTAL_CURL = 70f;
+    private const float MAX_THUMB_PROXIMAL_CURL = 55f, MAX_THUMB_DISTAL_CURL = 45f;
     private const float MIN_FINGER_DISTANCE = 1.5f;
     private const float MIN_THUMB_ANGLE = 25f, MAX_THUMB_ANGLE = 60f;
-    private const float MAX_ANGLE_BTW_FRAMES = 10f;
-    private const float CLUTCH_DWELL_TIME = 1f, CLUTCH_DWELL_ROTATION = 1f;
+    private const float MAX_ANGLE_BTW_FRAMES = 15f;
+    private const float CLUTCH_DWELL_TIME = 0.5f, CLUTCH_DWELL_ROTATION = 1f;
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -50,7 +52,8 @@ public class RotationInteractor : MonoBehaviour
     private Quaternion _cubeRotation, _prevCubeRotation;
     private Quaternion _prevTriangleRotation, _triangleRotation;
     private float _thumbWeight, _triangleArea, _triangleP1Angle, _deltaTriangleP1Angle, _prevP1Angle;
-    private float _prevDeltaAngle;
+    private float _deltaAngle;
+    private Vector3 _deltaAxis;
     private Vector3 _grabOffsetPosition, _centroidPosition;
     private Quaternion _grabOffsetRotation;
     private Vector3 _triangleForward, _triangleUp;
@@ -164,15 +167,31 @@ public class RotationInteractor : MonoBehaviour
         // if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromFingers(distance);
         if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
 
+        // calculate the rotation
+        if (isAngleValid && isTriangleValid && isTriangleAreaValid)
+        {
+            _deltaTriangleP1Angle = _triangleP1Angle - _prevP1Angle;
+            Vector3 triangleAxis = _triangleRotation * Vector3.up;
+            Quaternion deltaShearRotation, deltaTriangleRotation, deltaTotalRotation;
+            if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(_deltaTriangleP1Angle, triangleAxis);
+            else deltaShearRotation = Quaternion.identity;
+            deltaTriangleRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
+            deltaTotalRotation = deltaShearRotation * deltaTriangleRotation;
+            deltaTotalRotation.ToAngleAxis(out _deltaAngle, out _deltaAxis);
+            _prevP1Angle = _triangleP1Angle;
+            _prevTriangleRotation = _triangleRotation;
+        }
+
         // check clutching
-        if (GetIndexFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "index curl, "; }
-        if (GetMiddleFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "middle curl, "; }
-        if (GetThumbCurl() > MAX_THUMB_CURL) { _pinched = true; _tempstr += "thumb curl, "; }
+        // if (GetIndexFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "index curl, "; }
+        // if (GetMiddleFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "middle curl, "; }
+        // if (GetThumbCurl() > MAX_THUMB_CURL) { _pinched = true; _tempstr += "thumb curl, "; }
+        if (IsIndexFingerCurled() || IsMiddleFingerCurled() || IsThumbCurled()) _pinched = true;
         // if (_triangleArea < MIN_TRIANGLE_AREA) { _pinched = true; _tempstr += "area, "; }
         if ((indexDistance < MIN_FINGER_DISTANCE) && (middleDistance < MIN_FINGER_DISTANCE)) { _pinched = true; _tempstr += "distance, "; }
         // if (GetThumbAngle() < MIN_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle small, "; }
         // if (GetThumbAngle() > MAX_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle large, "; }
-        if (_prevDeltaAngle < CLUTCH_DWELL_ROTATION)
+        if (_deltaAngle < CLUTCH_DWELL_ROTATION)
         {
             _clutchDwellDuration += Time.deltaTime;
             // _textbox.text = $"{_clutchDwellDuration}";
@@ -185,6 +204,7 @@ public class RotationInteractor : MonoBehaviour
         else
         {
             _dwelled = false;
+            _clutchDwellDuration = 0f;
         }
 
         // _textbox.text = $"{_isCentroidCentered}";
@@ -219,42 +239,14 @@ public class RotationInteractor : MonoBehaviour
         {
             if (_isRotating)
             {
-                if (isAngleValid && isTriangleValid && isTriangleAreaValid)
+                if (_deltaAngle < MAX_ANGLE_BTW_FRAMES)
                 {
-                    _deltaTriangleP1Angle = _triangleP1Angle - _prevP1Angle;
-                    Vector3 triangleAxis = _triangleRotation * Vector3.up;
-                    Quaternion deltaShearRotation, deltaTriangleRotation, deltaTotalRotation;
-                    if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(_deltaTriangleP1Angle, triangleAxis);
-                    else deltaShearRotation = Quaternion.identity;
-                    deltaTriangleRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
-                    // deltaTriangleRotation.ToAngleAxis(out float deltaAngle, out Vector3 deltaAxis);
-                    deltaTotalRotation = deltaShearRotation * deltaTriangleRotation;
-                    deltaTotalRotation.ToAngleAxis(out _prevDeltaAngle, out Vector3 deltaAxis);
-                    if (_prevDeltaAngle < MAX_ANGLE_BTW_FRAMES)
-                    {
-                        deltaTotalRotation = Quaternion.AngleAxis(_prevDeltaAngle * _angleScaleFactor, deltaAxis);
-                        // _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
-                        _cubeRotation = deltaTotalRotation * _prevCubeRotation;
-                        _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
-                    }
-                    if (_prevDeltaAngle < CLUTCH_DWELL_ROTATION)
-                    {
-                        _clutchDwellDuration += Time.deltaTime;
-                        // _textbox.text = $"{_clutchDwellDuration}";
-                        if (_clutchDwellDuration > CLUTCH_DWELL_TIME)
-                        {
-                            _dwelled = true;
-                            _textbox.text = "Clutching Start";
-                        }
-                    }
-                    else
-                    {
-                        _textbox.text = "Clutching should end";
-                        _clutchDwellDuration = 0f;
-                        _dwelled = false;
-                    }
-                    _prevCubeRotation = _cubeRotation;
+                    Quaternion deltaScaledRotation = Quaternion.AngleAxis(_deltaAngle * _angleScaleFactor, _deltaAxis);
+                    // _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
+                    _cubeRotation = deltaScaledRotation * _prevCubeRotation;
+                    _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
                 }
+                _prevCubeRotation = _cubeRotation;
             }
             else
             {
@@ -263,12 +255,6 @@ public class RotationInteractor : MonoBehaviour
             }
             if (_isCentroidCentered) _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
             else _cube.transform.position = _grabOffsetPosition + _centroidPosition;
-        }
-
-        if (isAngleValid && isTriangleValid && isTriangleAreaValid)
-        {
-            _prevP1Angle = _triangleP1Angle;
-            _prevTriangleRotation = _triangleRotation;
         }
     }
 
@@ -327,7 +313,7 @@ public class RotationInteractor : MonoBehaviour
         ResetThumbOrigin();
         ResetFingersOrigin();
         _prevP1Angle = 0f;
-        _prevDeltaAngle = 0f;
+        _deltaAngle = 0f;
         _prevTriangleRotation = Quaternion.identity;
         // prevCubeRotation = Quaternion.Inverse(worldWristRotation) * cube.transform.rotation;
         _prevCubeRotation = Quaternion.identity;
@@ -475,6 +461,20 @@ public class RotationInteractor : MonoBehaviour
         return rawCurl;
     }
 
+    private bool IsIndexFingerCurled()
+    {
+        Vector3 metacarpalDir = (_indexProximal.Transform.position - _indexMetacarpal.Transform.position).normalized;
+        Vector3 proximalDir = (_indexMiddle.Transform.position - _indexProximal.Transform.position).normalized;
+        Vector3 middleDir = (_indexDistal.Transform.position - _indexMiddle.Transform.position).normalized;
+        Vector3 distalDir = (_indexTipBone.Transform.position - _indexDistal.Transform.position).normalized;
+
+        float proximalAngle = Vector3.Angle(metacarpalDir, proximalDir);
+        float middleAngle = Vector3.Angle(proximalDir, middleDir);
+        float distalAngle = Vector3.Angle(middleDir, distalDir);
+
+        return (proximalAngle > MAX_PROXIMAL_CURL) || (middleAngle > MAX_MIDDLE_CURL);
+    }
+
     private float GetMiddleFingerCurl()
     {
         Vector3 metacarpalDir = (_middleProximal.Transform.position - _middleMetacarpal.Transform.position).normalized;
@@ -491,6 +491,20 @@ public class RotationInteractor : MonoBehaviour
         return rawCurl;
     }
 
+    private bool IsMiddleFingerCurled()
+    {
+        Vector3 metacarpalDir = (_middleProximal.Transform.position - _middleMetacarpal.Transform.position).normalized;
+        Vector3 proximalDir = (_middleMiddle.Transform.position - _middleProximal.Transform.position).normalized;
+        Vector3 middleDir = (_middleDistal.Transform.position - _middleMiddle.Transform.position).normalized;
+        Vector3 distalDir = (_middleTipBone.Transform.position - _middleDistal.Transform.position).normalized;
+
+        float proximalAngle = Vector3.Angle(metacarpalDir, proximalDir);
+        float middleAngle = Vector3.Angle(proximalDir, middleDir);
+        float distalAngle = Vector3.Angle(middleDir, distalDir);
+
+        return (proximalAngle > MAX_PROXIMAL_CURL) || (middleAngle > MAX_MIDDLE_CURL);
+    }
+
     private float GetThumbCurl()
     {
         Vector3 metacarpalDir = (_thumbProximal.Transform.position - _thumbMetacarpal.Transform.position).normalized;
@@ -503,6 +517,18 @@ public class RotationInteractor : MonoBehaviour
         float rawCurl = proximalAngle + distalAngle;
 
         return rawCurl;
+    }
+
+    private bool IsThumbCurled()
+    {
+        Vector3 metacarpalDir = (_thumbProximal.Transform.position - _thumbMetacarpal.Transform.position).normalized;
+        Vector3 proximalDir = (_thumbDistal.Transform.position - _thumbProximal.Transform.position).normalized;
+        Vector3 distalDir = (_thumbTipBone.Transform.position - _thumbDistal.Transform.position).normalized;
+
+        float proximalAngle = Vector3.Angle(metacarpalDir, proximalDir);
+        float distalAngle = Vector3.Angle(proximalDir, distalDir);
+
+        return (proximalAngle > MAX_THUMB_PROXIMAL_CURL) || (distalAngle > MAX_THUMB_DISTAL_CURL);
     }
 
     private void CalculateFingerDistance(out float index, out float middle)
