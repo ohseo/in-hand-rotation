@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TMPro;
+using Unity.VisualScripting;
+using System.Data;
 
 public class RotationInteractor : MonoBehaviour
 {
@@ -59,6 +61,8 @@ public class RotationInteractor : MonoBehaviour
     private Vector3 _triangleForward, _triangleUp;
     private Vector3 _origThumbPosition, _origIndexPosition, _origMiddlePosition;
 
+    private Renderer _dieRenderer;
+    private const float DEFAULT_TRANSPARENCY = 0.75f;
     private Outline _outline;
     private const float OUTLINE_WIDTH_CLUTCHING = 10f, OUTLINE_WIDTH_DEFAULT = 3f;
 
@@ -113,6 +117,12 @@ public class RotationInteractor : MonoBehaviour
         _indexSphere = _spheres[1];
         _middleSphere = _spheres[2];
 
+        Renderer[] rList = _cube.GetComponentsInChildren<Renderer>();
+        foreach (Renderer r in rList)
+        {
+            if (string.Equals(r.name, "default")) _dieRenderer = r;
+        }
+
         InitGeometry();
 
         _keyActions = new Dictionary<KeyCode, Action>
@@ -163,8 +173,6 @@ public class RotationInteractor : MonoBehaviour
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
         CalculateFingerDistance(out float indexDistance, out float middleDistance);
         float distance = GetFingerTravelDistance();
-        // if (isTriangleAreaValid) _angleScaleFactor = GetHarmonicMean(GetScaleFactorFromArea(_triangleArea), GetScaleFactorFromFingers(distance));
-        // if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromFingers(distance);
         if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
 
         // calculate the rotation
@@ -183,43 +191,18 @@ public class RotationInteractor : MonoBehaviour
         }
 
         // check clutching
-        // if (GetIndexFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "index curl, "; }
-        // if (GetMiddleFingerCurl() > MAX_CURL) { _pinched = true; _tempstr += "middle curl, "; }
-        // if (GetThumbCurl() > MAX_THUMB_CURL) { _pinched = true; _tempstr += "thumb curl, "; }
         if (IsIndexFingerCurled() || IsMiddleFingerCurled() || IsThumbCurled()) _pinched = true;
-        // if (_triangleArea < MIN_TRIANGLE_AREA) { _pinched = true; _tempstr += "area, "; }
-        if ((indexDistance < MIN_FINGER_DISTANCE) && (middleDistance < MIN_FINGER_DISTANCE)) { _pinched = true; _tempstr += "distance, "; }
-        // if (GetThumbAngle() < MIN_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle small, "; }
-        // if (GetThumbAngle() > MAX_THUMB_ANGLE) { _pinched = true; _tempstr += "thumb angle large, "; }
+        if ((indexDistance < MIN_FINGER_DISTANCE) && (middleDistance < MIN_FINGER_DISTANCE)) _pinched = true;
         if (_deltaAngle < CLUTCH_DWELL_ROTATION)
         {
             _clutchDwellDuration += Time.deltaTime;
-            // _textbox.text = $"{_clutchDwellDuration}";
-            if (_clutchDwellDuration > CLUTCH_DWELL_TIME)
-            {
-                _dwelled = true;
-                _textbox.text = "Clutching Start";
-            }
+            if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _dwelled = true;
         }
         else
         {
             _dwelled = false;
             _clutchDwellDuration = 0f;
         }
-
-        // _textbox.text = $"{_isCentroidCentered}";
-            // _textbox.text = $"{_angleScaleFactor}";
-            // _textbox.text = $"{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle)}";
-            // _textbox.text = $"{GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}";
-            // _textbox.text = $"triangle area: {_triangleArea.ToString("0.00")}" + Environment.NewLine
-            //                 + $"scale factor: {_angleScaleFactor.ToString("0.00")}" + Environment.NewLine
-            //                 // + $"pinch strength: {_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Index).ToString("0.00")},{_ovrHand.GetFingerPinchStrength(OVRHand.HandFinger.Middle).ToString("0.00")}" + Environment.NewLine
-            //                 + $"curl: {GetIndexFingerCurl().ToString("0.00")}, {GetMiddleFingerCurl().ToString("0.00")}" + Environment.NewLine
-            //                 + $"curl: {GetThumbCurl().ToString("0.00")}" + Environment.NewLine
-            //                 + $"distance: {indexDistance.ToString("0.00")}, {middleDistance.ToString("0.00")}" + Environment.NewLine
-            //                 + $"thumb: {GetThumbAngle().ToString("0.00")}";
-            // _textbox.text = $"{distance.ToString("0.00")}" + Environment.NewLine + $"{_angleScaleFactor.ToString("0.00")}";
-            // _textbox.text = "";
 
         if (_isBaseline) _isRotating = false;
         else if (_clutchingMethod == 0)
@@ -242,11 +225,28 @@ public class RotationInteractor : MonoBehaviour
                 if (_deltaAngle < MAX_ANGLE_BTW_FRAMES)
                 {
                     Quaternion deltaScaledRotation = Quaternion.AngleAxis(_deltaAngle * _angleScaleFactor, _deltaAxis);
-                    // _cubeRotation = deltaShearRotation * deltaTriangleRotation * _prevCubeRotation;
                     _cubeRotation = deltaScaledRotation * _prevCubeRotation;
                     _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
+                    // Color c = _dieRenderer.material.color;
+                    // c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
+                    // _dieRenderer.material.color = c;
                 }
                 _prevCubeRotation = _cubeRotation;
+
+                // Color c = _dieRenderer.material.color;
+                // if (_clutchDwellDuration > 0.4f)
+                // {
+                //     c.a = 1f;
+                // }
+                // else if (_clutchDwellDuration > 0.3f)
+                // {
+                //     c.a = 0.75f;
+                // }
+                // else
+                // {
+                //     c.a = 0.5f;
+                // }
+                // _dieRenderer.material.color = c;
             }
             else
             {
@@ -319,6 +319,10 @@ public class RotationInteractor : MonoBehaviour
         _prevCubeRotation = Quaternion.identity;
         _grabOffsetPosition = Vector3.zero;
         _grabOffsetRotation = Quaternion.identity;
+
+        Color c = _dieRenderer.material.color;
+        c.a = DEFAULT_TRANSPARENCY;
+        _dieRenderer.material.color = c;
     }
 
     private void ToggleComponentsVisibility(bool b)
