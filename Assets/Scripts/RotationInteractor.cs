@@ -46,7 +46,7 @@ public class RotationInteractor : MonoBehaviour
     private const float MIN_FINGER_DISTANCE = 1.5f;
     private const float MIN_THUMB_ANGLE = 25f, MAX_THUMB_ANGLE = 60f;
     private const float MAX_ANGLE_BTW_FRAMES = 15f;
-    private const float CLUTCH_DWELL_TIME = 0.5f, CLUTCH_DWELL_ROTATION = 1f;
+    private const float CLUTCH_DWELL_TIME = 1.0f, CLUTCH_DWELL_ROTATION = 1f;
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -196,13 +196,9 @@ public class RotationInteractor : MonoBehaviour
         if (_deltaAngle < CLUTCH_DWELL_ROTATION)
         {
             _clutchDwellDuration += Time.deltaTime;
-            if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _dwelled = true;
         }
-        else
-        {
-            _dwelled = false;
-            _clutchDwellDuration = 0f;
-        }
+        if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _dwelled = true;
+        else _dwelled = false;
 
         if (_isBaseline) _isRotating = false;
         else if (_clutchingMethod == 0)
@@ -227,9 +223,9 @@ public class RotationInteractor : MonoBehaviour
                     Quaternion deltaScaledRotation = Quaternion.AngleAxis(_deltaAngle * _angleScaleFactor, _deltaAxis);
                     _cubeRotation = deltaScaledRotation * _prevCubeRotation;
                     _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
-                    // Color c = _dieRenderer.material.color;
-                    // c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
-                    // _dieRenderer.material.color = c;
+                    Color c = _dieRenderer.material.color;
+                    c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
+                    _dieRenderer.material.color = c;
                 }
                 _prevCubeRotation = _cubeRotation;
 
@@ -348,12 +344,29 @@ public class RotationInteractor : MonoBehaviour
     {
         if (CalculateAngleAtVertex(p1, p2, p3, out float angle))
         {
-            _thumbWeight = GetThumbWeight(angle);
-            return (_thumbWeight * p1 + p2 + p3) / (_thumbWeight + 1f + 1f);
+            // _thumbWeight = GetThumbWeight(angle);
+            // return (_thumbWeight * p1 + p2 + p3) / (_thumbWeight + 1f + 1f);
+            // return (3.0f * p1 + 1.5f * p2 + 1.0f * p3) / 5.5f;
+
+            // float alpha = 1.5f;
+            // float wT = Mathf.Pow(Vector3.Distance(p1, p2) + Vector3.Distance(p1, p3), alpha);
+            // float wI = Mathf.Pow(Vector3.Distance(p2, p1) + Vector3.Distance(p2, p3), alpha);
+            // float wM = Mathf.Pow(Vector3.Distance(p3, p1) + Vector3.Distance(p3, p2), alpha);
+
+            float wT = Angle(p1, p2, p3);
+            float wI = Angle(p2, p3, p1);
+            float wM = Angle(p3, p1, p2);
+            return (p1 / wT + p2 / wI + p3 / wM) / (1 / wT + 1 / wI + 1 / wM);
         }
         else return (p1 + p2 + p3) / 3f;
     }
 
+    float Angle(Vector3 a, Vector3 b, Vector3 c)
+    {
+        Vector3 ab = (b - a).normalized;
+        Vector3 ac = (c - a).normalized;
+        return Vector3.Angle(ab, ac);
+    }
     public float GetScaleFactorFromArea(float area)
     {
         // if (area < MIN_TRIANGLE_AREA) { _pinched = true; _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING; return MIN_SCALE_FACTOR; }
