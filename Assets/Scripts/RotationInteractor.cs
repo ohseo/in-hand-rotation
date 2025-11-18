@@ -46,7 +46,7 @@ public class RotationInteractor : MonoBehaviour
     private const float MIN_FINGER_DISTANCE = 1.5f;
     private const float MIN_THUMB_ANGLE = 25f, MAX_THUMB_ANGLE = 60f;
     private const float MAX_ANGLE_BTW_FRAMES = 15f;
-    private const float CLUTCH_DWELL_TIME = 1.0f, CLUTCH_DWELL_ROTATION = 1f;
+    private const float CLUTCH_DWELL_TIME = 1.0f, CLUTCH_DWELL_ROTATION = 0.5f;
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -75,6 +75,8 @@ public class RotationInteractor : MonoBehaviour
     private GameObject _centroidSphere;
 
     public event Action OnClutchEnd, OnClutchStart;
+
+    private GameObject _cubeGauge;
 
     void Awake()
     {
@@ -143,6 +145,9 @@ public class RotationInteractor : MonoBehaviour
         _outline = _cube.GetComponentInChildren<Outline>();
         _outline.OutlineColor = Color.blue;
         _outline.enabled = false;
+
+        Transform t = _cube.transform.Find("Cube");
+        if (t != null) _cubeGauge = t.GameObject();
     }
 
     // Update is called once per frame
@@ -223,9 +228,14 @@ public class RotationInteractor : MonoBehaviour
                     Quaternion deltaScaledRotation = Quaternion.AngleAxis(_deltaAngle * _angleScaleFactor, _deltaAxis);
                     _cubeRotation = deltaScaledRotation * _prevCubeRotation;
                     _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
-                    Color c = _dieRenderer.material.color;
-                    c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
-                    _dieRenderer.material.color = c;
+                    if (_cubeGauge != null)
+                    {
+                        float a = _angleScaleFactor / MAX_SCALE_FACTOR * 2f;
+                        _cubeGauge.transform.localScale = new Vector3(a, a, a);
+                    }
+                    // Color c = _dieRenderer.material.color;
+                    // c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
+                    // _dieRenderer.material.color = c;
                 }
                 _prevCubeRotation = _cubeRotation;
 
