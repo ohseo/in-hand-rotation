@@ -296,19 +296,22 @@ public class RotationInteractor : MonoBehaviour
         {
             if (_isRotating)
             {
-                if (_deltaAngle < MAX_ANGLE_BTW_FRAMES)
+                if (isAngleValid && isTriangleValid && isTriangleAreaValid)
                 {
-                    Quaternion deltaScaledRotation = Quaternion.AngleAxis(_deltaAngle * _angleScaleFactor, _deltaAxis);
-                    _cubeRotation = deltaScaledRotation * _prevCubeRotation;
-                    _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
-                    if (_cubeGauge != null)
+                    if (_deltaAngle < MAX_ANGLE_BTW_FRAMES)
                     {
-                        float a = _angleScaleFactor / MAX_SCALE_FACTOR * 2f;
-                        _cubeGauge.transform.localScale = new Vector3(a, a, a);
+                        Quaternion deltaScaledRotation = Quaternion.AngleAxis(_deltaAngle * _angleScaleFactor, _deltaAxis);
+                        _cubeRotation = deltaScaledRotation * _prevCubeRotation;
+                        _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
+                        if (_cubeGauge != null)
+                        {
+                            float a = _angleScaleFactor / MAX_SCALE_FACTOR * 2f;
+                            _cubeGauge.transform.localScale = new Vector3(a, a, a);
+                        }
+                        // Color c = _dieRenderer.material.color;
+                        // c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
+                        // _dieRenderer.material.color = c;
                     }
-                    // Color c = _dieRenderer.material.color;
-                    // c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
-                    // _dieRenderer.material.color = c;
                 }
                 _prevCubeRotation = _cubeRotation;
 
