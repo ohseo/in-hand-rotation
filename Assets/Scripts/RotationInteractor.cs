@@ -6,6 +6,9 @@ using UnityEngine;
 using TMPro;
 using Unity.VisualScripting;
 using System.Data;
+using System.Numerics;
+using Vector3 = UnityEngine.Vector3;
+using Quaternion = UnityEngine.Quaternion;
 
 public class RotationInteractor : MonoBehaviour
 {
@@ -23,6 +26,7 @@ public class RotationInteractor : MonoBehaviour
 
     private List<GameObject> _spheres = new List<GameObject>();
     private GameObject _thumbSphere, _indexSphere, _middleSphere;
+    private GameObject _thumbProjSphere, _indexProjSphere, _middleProjSphere;
     private float _sphereScale = 0.01f;
     private float _areaThreshold = 0.0001f, _magThreshold = 0.00001f, _dotThreshold = 0.999f;
 
@@ -33,20 +37,20 @@ public class RotationInteractor : MonoBehaviour
     private bool _pinched = false, _dwelled = false;
     private float _clutchDwellDuration = 0f;
     private bool _isBaseline = false;
-    private int _clutchingMethod = 0; // 0: pinch, 1: dwell
+    private int _clutchingMethod = 1; // 0: pinch, 1: dwell
     // private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     // private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
-    private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
+    private const float MIN_SCALE_FACTOR = 0.5f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
     private const float MIN_TRIANGLE_AREA = 0.5f, MAX_TRIANGLE_AREA = 7f; // area is in cm2
-    private const float MIN_TRAVEL_DISTANCE = 3f, MAX_TRAVEL_DISTANCE = 10f; // distance is in cm
+    private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
     private const float MAX_CURL = 180f, MAX_THUMB_CURL = 90f;
     private const float MAX_PROXIMAL_CURL = 70f, MAX_MIDDLE_CURL = 95f, MAX_DISTAL_CURL = 70f;
     private const float MAX_THUMB_PROXIMAL_CURL = 55f, MAX_THUMB_DISTAL_CURL = 45f;
     private const float MIN_FINGER_DISTANCE = 1.5f;
     private const float MIN_THUMB_ANGLE = 25f, MAX_THUMB_ANGLE = 60f;
     private const float MAX_ANGLE_BTW_FRAMES = 15f;
-    private const float CLUTCH_DWELL_TIME = 1.0f, CLUTCH_DWELL_ROTATION = 0.5f;
+    private const float CLUTCH_DWELL_TIME = 0.5f, CLUTCH_DWELL_ROTATION = 0.25f;
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -60,6 +64,8 @@ public class RotationInteractor : MonoBehaviour
     private Quaternion _grabOffsetRotation;
     private Vector3 _triangleForward, _triangleUp;
     private Vector3 _origThumbPosition, _origIndexPosition, _origMiddlePosition;
+    private float _prevScaleFactor;
+    private const float LERP_SMOOTHING_FACTOR = 2f;
 
     private Renderer _dieRenderer;
     private const float DEFAULT_TRANSPARENCY = 0.75f;
@@ -73,10 +79,13 @@ public class RotationInteractor : MonoBehaviour
 
     private bool _isCentroidCentered = true;
     private GameObject _centroidSphere;
+    private GameObject _projectionSphere;
+    private Vector3 _prevThumbProjection, _prevIndexProjection, _prevMiddleProjection;
 
     public event Action OnClutchEnd, OnClutchStart;
 
     private GameObject _cubeGauge;
+    private float _origTriangleArea;
 
     void Awake()
     {
@@ -105,6 +114,17 @@ public class RotationInteractor : MonoBehaviour
             _spheres.Add(sphere);
         }
 
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.transform.localScale = new Vector3(_sphereScale, _sphereScale, _sphereScale);
+            if (!_isComponentsVisible)
+            {
+                sphere.GetComponent<Renderer>().enabled = false;
+            }
+            _spheres.Add(sphere);
+        }
+
         if (_isCentroidCentered)
         {
             _centroidSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -115,9 +135,24 @@ public class RotationInteractor : MonoBehaviour
             }
         }
 
+        // _projectionSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        // _projectionSphere.transform.localScale = new Vector3(0.05f, 0.05f, 0.05f);
+        // Renderer pRenderer = _projectionSphere.GetComponent<Renderer>();
+        // Color c = pRenderer.material.color;
+        // c.a = 0.2f;
+        // pRenderer.material.color = c;
+        // Color c = _dieRenderer.material.color;
+        // c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
+        // _dieRenderer.material.color = c;
+
         _thumbSphere = _spheres[0];
         _indexSphere = _spheres[1];
         _middleSphere = _spheres[2];
+
+        _thumbProjSphere = _spheres[3];
+        _indexProjSphere = _spheres[4];
+        _middleProjSphere = _spheres[5];
+
 
         Renderer[] rList = _cube.GetComponentsInChildren<Renderer>();
         foreach (Renderer r in rList)
@@ -148,6 +183,9 @@ public class RotationInteractor : MonoBehaviour
 
         Transform t = _cube.transform.Find("Cube");
         if (t != null) _cubeGauge = t.GameObject();
+
+        _origTriangleArea = 0f;
+        _prevScaleFactor = MIN_SCALE_FACTOR;
     }
 
     // Update is called once per frame
@@ -158,27 +196,60 @@ public class RotationInteractor : MonoBehaviour
         // transforms are on the local coordinates based on the wrist if not stated otherwise
         _worldWristRotation = _wristBone.Transform.rotation;
 
-        Vector3 ThumbTipPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
+        Vector3 thumbTipPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
         Vector3 indexTipPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         Vector3 middleTipPosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
+
+        _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
+
+        Vector3 thumbProjectedWorld = ProjectClosestToPrevious(_thumbTipBone.Transform.position, _centroidPosition, 0.04f, _prevThumbProjection);
+        Vector3 indexProjectedWorld = ProjectClosestToPrevious(_indexTipBone.Transform.position, _centroidPosition, 0.04f, _prevIndexProjection);
+        Vector3 middleProjectedWorld = ProjectClosestToPrevious(_middleTipBone.Transform.position, _centroidPosition, 0.04f, _prevMiddleProjection);
+
+        _thumbProjSphere.transform.position = thumbProjectedWorld;
+        _indexProjSphere.transform.position = indexProjectedWorld;
+        _middleProjSphere.transform.position = middleProjectedWorld;
+
+        _prevThumbProjection = thumbProjectedWorld;
+        _prevIndexProjection = indexProjectedWorld;
+        _prevMiddleProjection = middleProjectedWorld;
+
+        _lineRenderer.SetPosition(0, thumbProjectedWorld);
+        _lineRenderer.SetPosition(1, indexProjectedWorld);
+        _lineRenderer.SetPosition(2, middleProjectedWorld);
+        _lineRenderer.SetPosition(3, thumbProjectedWorld);
+
+        // _projectionSphere.transform.position = _cube.transform.position;
 
         _thumbSphere.transform.position = _thumbTipBone.Transform.position;
         _indexSphere.transform.position = _indexTipBone.Transform.position;
         _middleSphere.transform.position = _middleTipBone.Transform.position;
 
-        _lineRenderer.SetPosition(0, _thumbTipBone.Transform.position);
-        _lineRenderer.SetPosition(1, _indexTipBone.Transform.position);
-        _lineRenderer.SetPosition(2, _middleTipBone.Transform.position);
-        _lineRenderer.SetPosition(3, _thumbTipBone.Transform.position);
+        // _lineRenderer.SetPosition(0, _thumbTipBone.Transform.position);
+        // _lineRenderer.SetPosition(1, _indexTipBone.Transform.position);
+        // _lineRenderer.SetPosition(2, _middleTipBone.Transform.position);
+        // _lineRenderer.SetPosition(3, _thumbTipBone.Transform.position);
 
-        bool isAngleValid = CalculateAngleAtVertex(ThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
-        bool isTriangleValid = CalculateTriangleOrientation(ThumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
-        bool isTriangleAreaValid = CalculateTriangleArea(ThumbTipPosition, indexTipPosition, middleTipPosition, out float _triangleArea);
+        Vector3 thumbProjected = _wristBone.Transform.InverseTransformPoint(thumbProjectedWorld);
+        Vector3 indexProjected = _wristBone.Transform.InverseTransformPoint(indexProjectedWorld);
+        Vector3 middleProjected = _wristBone.Transform.InverseTransformPoint(middleProjectedWorld);
+
+        bool isAngleValid = CalculateAngleAtVertex(thumbProjected, indexProjected, middleProjected, out _triangleP1Angle);
+        bool isTriangleValid = CalculateTriangleOrientation(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
+        bool isTriangleAreaValid = CalculateTriangleArea(thumbProjected, indexProjected, middleProjected, out _triangleArea);
+
+        // bool isAngleValid = CalculateAngleAtVertex(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
+        // bool isTriangleValid = CalculateTriangleOrientation(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
+        // bool isTriangleAreaValid = CalculateTriangleArea(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleArea);
         // position cube with bones since spheres are modified. use world coordinates here.
-        _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
+        // _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
         CalculateFingerDistance(out float indexDistance, out float middleDistance);
         float distance = GetFingerTravelDistance();
-        if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
+        // if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
+        // if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea / _origTriangleArea);
+        float scaleFactor = GetScaleFactorFromFingers(distance); // * _triangleArea;
+                                                                 // if (_triangleArea < MIN_TRIANGLE_AREA) _angleScaleFactor = MIN_SCALE_FACTOR;
+        _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, scaleFactor, LERP_SMOOTHING_FACTOR * Time.deltaTime);
 
         // calculate the rotation
         if (isAngleValid && isTriangleValid && isTriangleAreaValid)
@@ -194,6 +265,8 @@ public class RotationInteractor : MonoBehaviour
             _prevP1Angle = _triangleP1Angle;
             _prevTriangleRotation = _triangleRotation;
         }
+
+        _textbox.text = $"{distance:F2}, {_angleScaleFactor:F2}";
 
         // check clutching
         if (IsIndexFingerCurled() || IsMiddleFingerCurled() || IsThumbCurled()) _pinched = true;
@@ -262,6 +335,9 @@ public class RotationInteractor : MonoBehaviour
             if (_isCentroidCentered) _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
             else _cube.transform.position = _grabOffsetPosition + _centroidPosition;
         }
+
+        ResetFingersOrigin();
+        _prevScaleFactor = _angleScaleFactor;
     }
 
     public void Reset()
@@ -371,6 +447,31 @@ public class RotationInteractor : MonoBehaviour
         else return (p1 + p2 + p3) / 3f;
     }
 
+    private Vector3 ProjectToSphere(Vector3 point, Vector3 center, float radius)
+    {
+        Vector3 direction = point - center;
+        return center + direction.normalized * radius;
+    }
+
+    private Vector3 ProjectClosestToPrevious(Vector3 point, Vector3 center, float radius, Vector3 prevPoint)
+    {
+        Vector3 direction = point - center;
+        if (direction.sqrMagnitude < 0.000001f)
+        {
+            return prevPoint;
+        }
+        direction.Normalize();
+
+        Vector3 pos = center + direction * radius;
+        Vector3 neg = center - direction * radius;
+
+        float distPos = (pos - prevPoint).sqrMagnitude;
+        float distNeg = (neg - prevPoint).sqrMagnitude;
+
+        if (distPos < distNeg) return pos;
+        else return neg;
+    }
+
     float Angle(Vector3 a, Vector3 b, Vector3 c)
     {
         Vector3 ab = (b - a).normalized;
@@ -379,17 +480,21 @@ public class RotationInteractor : MonoBehaviour
     }
     public float GetScaleFactorFromArea(float area)
     {
-        // if (area < MIN_TRIANGLE_AREA) { _pinched = true; _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING; return MIN_SCALE_FACTOR; }
         if (area < MIN_TRIANGLE_AREA) return MIN_SCALE_FACTOR;
         else if (area > MAX_TRIANGLE_AREA) return MAX_SCALE_FACTOR;
-        else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRIANGLE_AREA - MIN_TRIANGLE_AREA) * (area - MIN_TRIANGLE_AREA) + MIN_SCALE_FACTOR;
+        else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRIANGLE_AREA - MIN_TRIANGLE_AREA) * area + (MAX_TRIANGLE_AREA * MIN_SCALE_FACTOR - MIN_TRIANGLE_AREA * MAX_SCALE_FACTOR) / (MAX_TRIANGLE_AREA - MIN_TRIANGLE_AREA);
+        // float a = 0.3f;
+        // float b = 1f;
+        // if (area < a) return MIN_SCALE_FACTOR;
+        // else if (area > b) return MAX_SCALE_FACTOR;
+        // else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (b - a) * area + (b * MIN_SCALE_FACTOR - a * MAX_SCALE_FACTOR) / (b - a);
     }
 
     public float GetScaleFactorFromFingers(float distance)
     {
         if (distance < MIN_TRAVEL_DISTANCE) return MIN_SCALE_FACTOR;
         else if (distance > MAX_TRAVEL_DISTANCE) return MAX_SCALE_FACTOR;
-        else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE) * (distance - MIN_TRAVEL_DISTANCE) + MIN_SCALE_FACTOR;
+        else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE) * distance + (MAX_TRAVEL_DISTANCE * MIN_SCALE_FACTOR - MIN_TRAVEL_DISTANCE * MAX_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE);
     }
 
     public float GetHarmonicMean(float a, float b)
@@ -722,6 +827,7 @@ public class RotationInteractor : MonoBehaviour
 
     public void OnGrab()
     {
+        _origTriangleArea = _triangleArea;
         _isGrabbed = true;
         ResetGrabOffset();
         ResetFingersOrigin();
@@ -729,6 +835,7 @@ public class RotationInteractor : MonoBehaviour
         _pinched = false;
         _dwelled = false;
         _clutchDwellDuration = 0f;
+        _prevScaleFactor = MIN_SCALE_FACTOR;
     }
 
     public void OnTarget()
@@ -792,5 +899,5 @@ public class RotationInteractor : MonoBehaviour
     {
         get { return _isOnTarget; }
         set { _isOnTarget = value; }
-    }    
+    }
 }
