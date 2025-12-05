@@ -41,7 +41,7 @@ public class RotationInteractor : MonoBehaviour
     // private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     // private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
-    private const float MIN_SCALE_FACTOR = 0.5f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
+    private const float MIN_SCALE_FACTOR = 0.25f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
     private const float MIN_TRIANGLE_AREA = 0.5f, MAX_TRIANGLE_AREA = 7f; // area is in cm2
     private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
     private const float MAX_CURL = 180f, MAX_THUMB_CURL = 90f;
@@ -77,7 +77,7 @@ public class RotationInteractor : MonoBehaviour
 
     private string _tempstr = "";
 
-    private bool _isCentroidCentered = true;
+    private bool _isCentroidCentered = false;
     private GameObject _centroidSphere;
     private GameObject _projectionSphere;
     private Vector3 _prevThumbProjection, _prevIndexProjection, _prevMiddleProjection;
@@ -202,9 +202,13 @@ public class RotationInteractor : MonoBehaviour
 
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
 
-        Vector3 thumbProjectedWorld = ProjectClosestToPrevious(_thumbTipBone.Transform.position, _centroidPosition, 0.04f, _prevThumbProjection);
-        Vector3 indexProjectedWorld = ProjectClosestToPrevious(_indexTipBone.Transform.position, _centroidPosition, 0.04f, _prevIndexProjection);
-        Vector3 middleProjectedWorld = ProjectClosestToPrevious(_middleTipBone.Transform.position, _centroidPosition, 0.04f, _prevMiddleProjection);
+        Vector3 projectionCenter = _thumbTipBone.Transform.position;
+
+        // Sphere projection 1 start
+        // Vector3 thumbProjectedWorld = ProjectClosestToPrevious(_thumbTipBone.Transform.position, projectionCenter, 0.05f, _prevThumbProjection);
+        Vector3 thumbProjectedWorld = _thumbTipBone.Transform.position;
+        Vector3 indexProjectedWorld = ProjectClosestToPrevious(_indexTipBone.Transform.position, projectionCenter, 0.04f, _prevIndexProjection);
+        Vector3 middleProjectedWorld = ProjectClosestToPrevious(_middleTipBone.Transform.position, projectionCenter, 0.05f, _prevMiddleProjection);
 
         _thumbProjSphere.transform.position = thumbProjectedWorld;
         _indexProjSphere.transform.position = indexProjectedWorld;
@@ -220,6 +224,7 @@ public class RotationInteractor : MonoBehaviour
         _lineRenderer.SetPosition(3, thumbProjectedWorld);
 
         // _projectionSphere.transform.position = _cube.transform.position;
+        // Sphere projection 1 end
 
         _thumbSphere.transform.position = _thumbTipBone.Transform.position;
         _indexSphere.transform.position = _indexTipBone.Transform.position;
@@ -230,6 +235,7 @@ public class RotationInteractor : MonoBehaviour
         // _lineRenderer.SetPosition(2, _middleTipBone.Transform.position);
         // _lineRenderer.SetPosition(3, _thumbTipBone.Transform.position);
 
+        // Sphere projection 2 start
         Vector3 thumbProjected = _wristBone.Transform.InverseTransformPoint(thumbProjectedWorld);
         Vector3 indexProjected = _wristBone.Transform.InverseTransformPoint(indexProjectedWorld);
         Vector3 middleProjected = _wristBone.Transform.InverseTransformPoint(middleProjectedWorld);
@@ -237,6 +243,7 @@ public class RotationInteractor : MonoBehaviour
         bool isAngleValid = CalculateAngleAtVertex(thumbProjected, indexProjected, middleProjected, out _triangleP1Angle);
         bool isTriangleValid = CalculateTriangleOrientation(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
         bool isTriangleAreaValid = CalculateTriangleArea(thumbProjected, indexProjected, middleProjected, out _triangleArea);
+        // Sphere projection 2 end
 
         // bool isAngleValid = CalculateAngleAtVertex(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
         // bool isTriangleValid = CalculateTriangleOrientation(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
@@ -472,6 +479,7 @@ public class RotationInteractor : MonoBehaviour
         float distNeg = (neg - prevPoint).sqrMagnitude;
 
         if (distPos < distNeg) return pos;
+        else if (Math.Abs(distPos - distNeg) < 0.01f) return pos;
         else return neg;
     }
 
