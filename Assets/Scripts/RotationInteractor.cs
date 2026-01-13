@@ -14,8 +14,6 @@ public class RotationInteractor : MonoBehaviour
 {
     [SerializeField]
     private bool _isComponentsVisible = true;
-    [SerializeField]
-    private bool _isShearFactorOn = true;
     private OVRSkeleton _ovrSkeleton;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _thumbMetacarpal, _wristBone;
     private OVRBone _indexMetacarpal, _indexProximal, _indexMiddle, _indexDistal;
@@ -47,8 +45,6 @@ public class RotationInteractor : MonoBehaviour
     private const float MAX_CURL = 180f, MAX_THUMB_CURL = 90f;
     private const float MAX_PROXIMAL_CURL = 70f, MAX_MIDDLE_CURL = 95f, MAX_DISTAL_CURL = 70f;
     private const float MAX_THUMB_PROXIMAL_CURL = 55f, MAX_THUMB_DISTAL_CURL = 45f;
-    private const float MIN_FINGER_DISTANCE = 1.5f;
-    private const float MIN_THUMB_ANGLE = 25f, MAX_THUMB_ANGLE = 60f;
     private const float MAX_ANGLE_BTW_FRAMES = 15f;
     private const float CLUTCH_DWELL_TIME = 0.5f, CLUTCH_DWELL_ROTATION = 0.25f;
     private Dictionary<KeyCode, Action> _keyActions;
@@ -77,7 +73,7 @@ public class RotationInteractor : MonoBehaviour
 
     private string _tempstr = "";
 
-    private bool _isCentroidCentered = true;
+    private bool _isCentroidCentered = false;
     private GameObject _centroidSphere;
     private GameObject _projectionSphere;
     private Vector3 _prevThumbProjection, _prevIndexProjection, _prevMiddleProjection;
@@ -200,11 +196,12 @@ public class RotationInteractor : MonoBehaviour
         Vector3 indexTipPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         Vector3 middleTipPosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
+        // position cube with bones since spheres are modified. use world coordinates here.
         _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
 
-        Vector3 thumbProjectedWorld = ProjectClosestToPrevious(_thumbTipBone.Transform.position, _centroidPosition, 0.04f, _prevThumbProjection);
-        Vector3 indexProjectedWorld = ProjectClosestToPrevious(_indexTipBone.Transform.position, _centroidPosition, 0.04f, _prevIndexProjection);
-        Vector3 middleProjectedWorld = ProjectClosestToPrevious(_middleTipBone.Transform.position, _centroidPosition, 0.04f, _prevMiddleProjection);
+        Vector3 thumbProjectedWorld = ProjectClosestToPrevious(_thumbTipBone.Transform.position, _centroidPosition, 1f, _prevThumbProjection);
+        Vector3 indexProjectedWorld = ProjectClosestToPrevious(_indexTipBone.Transform.position, _centroidPosition, 1f, _prevIndexProjection);
+        Vector3 middleProjectedWorld = ProjectClosestToPrevious(_middleTipBone.Transform.position, _centroidPosition, 1f, _prevMiddleProjection);
 
         _thumbProjSphere.transform.position = thumbProjectedWorld;
         _indexProjSphere.transform.position = indexProjectedWorld;
@@ -235,42 +232,29 @@ public class RotationInteractor : MonoBehaviour
         Vector3 middleProjected = _wristBone.Transform.InverseTransformPoint(middleProjectedWorld);
 
         bool isAngleValid = CalculateAngleAtVertex(thumbProjected, indexProjected, middleProjected, out _triangleP1Angle);
-        bool isTriangleValid = CalculateTriangleOrientation(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
+        // bool isTriangleValid = CalculateTriangleOrientation(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
+        bool isTriangleValid = CalculateTriangleOrientationWithOffset(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
         bool isTriangleAreaValid = CalculateTriangleArea(thumbProjected, indexProjected, middleProjected, out _triangleArea);
 
         // bool isAngleValid = CalculateAngleAtVertex(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
         // bool isTriangleValid = CalculateTriangleOrientation(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
         // bool isTriangleAreaValid = CalculateTriangleArea(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleArea);
-        // position cube with bones since spheres are modified. use world coordinates here.
-        // _centroidPosition = GetWeightedTriangleCentroid(_thumbTipBone.Transform.position, _indexTipBone.Transform.position, _middleTipBone.Transform.position);
-        CalculateFingerDistance(out float indexDistance, out float middleDistance);
+
         float distance = GetFingerTravelDistance();
-        // if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea);
-        // if (isTriangleAreaValid) _angleScaleFactor = GetScaleFactorFromArea(_triangleArea / _origTriangleArea);
-        float scaleFactor = GetScaleFactorFromFingers(distance); // * _triangleArea;
-                                                                 // if (_triangleArea < MIN_TRIANGLE_AREA) _angleScaleFactor = MIN_SCALE_FACTOR;
+        float scaleFactor = GetScaleFactorFromFingers(distance);
         _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, scaleFactor, LERP_SMOOTHING_FACTOR * Time.deltaTime);
 
         // calculate the rotation
         if (isAngleValid && isTriangleValid && isTriangleAreaValid)
         {
-            _deltaTriangleP1Angle = _triangleP1Angle - _prevP1Angle;
-            Vector3 triangleAxis = _triangleRotation * Vector3.up;
-            Quaternion deltaShearRotation, deltaTriangleRotation, deltaTotalRotation;
-            if (_isShearFactorOn) deltaShearRotation = Quaternion.AngleAxis(_deltaTriangleP1Angle, triangleAxis);
-            else deltaShearRotation = Quaternion.identity;
-            deltaTriangleRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
-            deltaTotalRotation = deltaShearRotation * deltaTriangleRotation;
-            deltaTotalRotation.ToAngleAxis(out _deltaAngle, out _deltaAxis);
-            _prevP1Angle = _triangleP1Angle;
+            Quaternion deltaRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
+            deltaRotation.ToAngleAxis(out _deltaAngle, out _deltaAxis);
             _prevTriangleRotation = _triangleRotation;
         }
 
         _textbox.text = $"{distance:F2}, {_angleScaleFactor:F2}";
 
         // check clutching
-        if (IsIndexFingerCurled() || IsMiddleFingerCurled() || IsThumbCurled()) _pinched = true;
-        if ((indexDistance < MIN_FINGER_DISTANCE) && (middleDistance < MIN_FINGER_DISTANCE)) _pinched = true;
         if (_deltaAngle < CLUTCH_DWELL_ROTATION)
         {
             _clutchDwellDuration += Time.deltaTime;
@@ -364,6 +348,13 @@ public class RotationInteractor : MonoBehaviour
         _origMiddlePosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
     }
 
+    private void ResetProjection()
+    {
+        _prevThumbProjection = _thumbTipBone.Transform.position;
+        _prevIndexProjection = _indexTipBone.Transform.position;
+        _prevMiddleProjection = _middleTipBone.Transform.position;
+    }
+
     private void ResetGrabOffset()
     {
         _grabOffsetPosition = _cube.transform.position - _centroidPosition;
@@ -397,6 +388,7 @@ public class RotationInteractor : MonoBehaviour
         _worldWristRotation = _wristBone.Transform.rotation;
         ResetThumbOrigin();
         ResetFingersOrigin();
+        ResetProjection();
         _prevP1Angle = 0f;
         _deltaAngle = 0f;
         _prevTriangleRotation = Quaternion.identity;
@@ -433,15 +425,6 @@ public class RotationInteractor : MonoBehaviour
     {
         if (CalculateAngleAtVertex(p1, p2, p3, out float angle))
         {
-            // _thumbWeight = GetThumbWeight(angle);
-            // return (_thumbWeight * p1 + p2 + p3) / (_thumbWeight + 1f + 1f);
-            // return (3.0f * p1 + 1.5f * p2 + 1.0f * p3) / 5.5f;
-
-            // float alpha = 1.5f;
-            // float wT = Mathf.Pow(Vector3.Distance(p1, p2) + Vector3.Distance(p1, p3), alpha);
-            // float wI = Mathf.Pow(Vector3.Distance(p2, p1) + Vector3.Distance(p2, p3), alpha);
-            // float wM = Mathf.Pow(Vector3.Distance(p3, p1) + Vector3.Distance(p3, p2), alpha);
-
             float wT = Angle(p1, p2, p3);
             float wI = Angle(p2, p3, p1);
             float wM = Angle(p3, p1, p2);
@@ -573,6 +556,36 @@ public class RotationInteractor : MonoBehaviour
         orientation = Quaternion.LookRotation(forward, normal);
         return true;
     }
+
+    private bool CalculateTriangleOrientationWithOffset(Vector3 p1, Vector3 p2, Vector3 p3, out Quaternion orientation)
+    {
+        // 1. 기본 축 계산
+        Vector3 forward = (p2 - p1).normalized;
+        Vector3 toP3 = (p3 - p1).normalized;
+        Vector3 normal = Vector3.Cross(forward, toP3).normalized;
+
+        // 안전 장치
+        if (forward.sqrMagnitude < 0.001f || normal.sqrMagnitude < 0.001f)
+        {
+            orientation = Quaternion.identity;
+            return false;
+        }
+
+        // 2. 기본 회전 (Z축: P2 방향, Y축: 평면 수직)
+        Quaternion baseRotation = Quaternion.LookRotation(forward, normal);
+
+        // 3. [핵심] P1->P2와 P1->P3 사이의 평면상 각도 계산
+        // forward를 기준으로 toP3가 평면 위에서 몇 도 돌아가 있는지 구합니다.
+        // Vector3.SignedAngle을 사용하면 법선(normal)을 기준으로 시계/반시계 방향을 구분합니다.
+        float angleOffset = Vector3.SignedAngle(forward, toP3, normal);
+
+        // 4. 결과값: 기본 회전에 Y축(normal축) 기준 오프셋 적용
+        // angleOffset을 그대로 쓰거나, 특정 기준 각도를 빼서 '0도' 지점을 설정할 수 있습니다.
+        orientation = baseRotation * Quaternion.Euler(0, angleOffset, 0);
+
+        return true;
+    }
+
     private float GetThumbWeight(float deg)
     {
         if (deg < 10f) return 2f;
@@ -834,6 +847,7 @@ public class RotationInteractor : MonoBehaviour
         _isGrabbed = true;
         ResetGrabOffset();
         ResetFingersOrigin();
+        ResetProjection();
         _outline.enabled = true;
         _pinched = false;
         _dwelled = false;

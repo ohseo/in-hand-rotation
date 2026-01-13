@@ -466,7 +466,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isComponentsVisible: 0
-  _isShearFactorOn: 1
+  _isShearFactorOn: 0
   _textbox: {fileID: 740122283}
 --- !u!4 &94333790
 Transform:
