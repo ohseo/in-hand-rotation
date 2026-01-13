@@ -39,14 +39,14 @@ public class RotationInteractor : MonoBehaviour
     // private float _powFactorA = 1.910f, _tanhFactorA = 0.547f;
     // private double _powFactorB = 2d, _tanhFactorB = 3.657d;
     private float _angleScaleFactor = 0.5f;
-    private const float MIN_SCALE_FACTOR = 0.5f, MAX_SCALE_FACTOR = 2f, MIN_FLOAT = 1e-4f;
+    private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 5f, MIN_FLOAT = 1e-4f;
     private const float MIN_TRIANGLE_AREA = 0.5f, MAX_TRIANGLE_AREA = 7f; // area is in cm2
     private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
     private const float MAX_CURL = 180f, MAX_THUMB_CURL = 90f;
     private const float MAX_PROXIMAL_CURL = 70f, MAX_MIDDLE_CURL = 95f, MAX_DISTAL_CURL = 70f;
     private const float MAX_THUMB_PROXIMAL_CURL = 55f, MAX_THUMB_DISTAL_CURL = 45f;
     private const float MAX_ANGLE_BTW_FRAMES = 15f;
-    private const float CLUTCH_DWELL_TIME = 0.5f, CLUTCH_DWELL_ROTATION = 0.25f;
+    private const float CLUTCH_DWELL_TIME = 0.2f, CLUTCH_DWELL_ROTATION = 0.25f;
     private Dictionary<KeyCode, Action> _keyActions;
 
     private Quaternion _origThumbRotation, _origScaledThumbRotation;
@@ -60,6 +60,7 @@ public class RotationInteractor : MonoBehaviour
     private Quaternion _grabOffsetRotation;
     private Vector3 _triangleForward, _triangleUp;
     private Vector3 _origThumbPosition, _origIndexPosition, _origMiddlePosition;
+    private Vector3 _grabOffsetFromWrist;
     private float _prevScaleFactor;
     private const float LERP_SMOOTHING_FACTOR = 2f;
 
@@ -73,7 +74,7 @@ public class RotationInteractor : MonoBehaviour
 
     private string _tempstr = "";
 
-    private bool _isCentroidCentered = false;
+    private bool _isCentroidCentered = false, _doProjection = true;
     private GameObject _centroidSphere;
     private GameObject _projectionSphere;
     private Vector3 _prevThumbProjection, _prevIndexProjection, _prevMiddleProjection;
@@ -168,7 +169,9 @@ public class RotationInteractor : MonoBehaviour
             {KeyCode.Keypad5, () => _isCentroidCentered = true},
             {KeyCode.Keypad6, () => _isCentroidCentered = false},
             {KeyCode.Keypad2, () => _clutchingMethod = 0},
-            {KeyCode.Keypad3, () => _clutchingMethod = 1}
+            {KeyCode.Keypad3, () => _clutchingMethod = 1},
+            {KeyCode.P, () => _doProjection = true},
+            {KeyCode.O, () => _doProjection = false}
         };
 
         _cube.GetComponentInChildren<DieGrabHandler>().SetRotationInteractor(this);
@@ -231,14 +234,21 @@ public class RotationInteractor : MonoBehaviour
         Vector3 indexProjected = _wristBone.Transform.InverseTransformPoint(indexProjectedWorld);
         Vector3 middleProjected = _wristBone.Transform.InverseTransformPoint(middleProjectedWorld);
 
-        bool isAngleValid = CalculateAngleAtVertex(thumbProjected, indexProjected, middleProjected, out _triangleP1Angle);
-        // bool isTriangleValid = CalculateTriangleOrientation(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
-        bool isTriangleValid = CalculateTriangleOrientationWithOffset(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
-        bool isTriangleAreaValid = CalculateTriangleArea(thumbProjected, indexProjected, middleProjected, out _triangleArea);
-
-        // bool isAngleValid = CalculateAngleAtVertex(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
-        // bool isTriangleValid = CalculateTriangleOrientation(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
-        // bool isTriangleAreaValid = CalculateTriangleArea(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleArea);
+        bool isAngleValid, isTriangleValid, isTriangleAreaValid;
+        if (_doProjection)
+        {
+            isAngleValid = CalculateAngleAtVertex(thumbProjected, indexProjected, middleProjected, out _triangleP1Angle);
+            // bool isTriangleValid = CalculateTriangleOrientation(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
+            isTriangleValid = CalculateTriangleOrientationWithOffset(thumbProjected, indexProjected, middleProjected, out _triangleRotation);
+            isTriangleAreaValid = CalculateTriangleArea(thumbProjected, indexProjected, middleProjected, out _triangleArea);
+        }
+        else
+        {
+            isAngleValid = CalculateAngleAtVertex(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleP1Angle);
+            // bool isTriangleValid = CalculateTriangleOrientation(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
+            isTriangleValid = CalculateTriangleOrientationWithOffset(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleRotation);
+            isTriangleAreaValid = CalculateTriangleArea(thumbTipPosition, indexTipPosition, middleTipPosition, out _triangleArea);
+        }
 
         float distance = GetFingerTravelDistance();
         float scaleFactor = GetScaleFactorFromFingers(distance);
@@ -319,8 +329,10 @@ public class RotationInteractor : MonoBehaviour
                 _cubeRotation = _prevCubeRotation;
                 _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
             }
-            if (_isCentroidCentered) _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
+            // if (_isCentroidCentered) _cube.transform.position = _worldWristRotation * _cubeRotation * Quaternion.Inverse(_worldWristRotation) * _grabOffsetPosition + _centroidPosition;
+            if (!_isRotating) _cube.transform.position = _wristBone.Transform.TransformPoint(_grabOffsetFromWrist);
             else _cube.transform.position = _grabOffsetPosition + _centroidPosition;
+            // else _cube.transform.position = _wristBone.Transform.TransformPoint(_grabOffsetFromWrist);
         }
 
         ResetFingersOrigin();
@@ -360,6 +372,7 @@ public class RotationInteractor : MonoBehaviour
         _grabOffsetPosition = _cube.transform.position - _centroidPosition;
         _grabOffsetRotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _cube.transform.rotation;
         _prevCubeRotation = Quaternion.identity;
+        _grabOffsetFromWrist = _wristBone.Transform.InverseTransformPoint(_cube.transform.position);
     }
 
     private void InitGeometry()
@@ -898,6 +911,7 @@ public class RotationInteractor : MonoBehaviour
         _outline.OutlineWidth = OUTLINE_WIDTH_CLUTCHING;
         _isRotating = false;
         _tempstr = "";
+        _grabOffsetFromWrist = _wristBone.Transform.InverseTransformPoint(_cube.transform.position);
     }
 
     public bool IsGrabbed
