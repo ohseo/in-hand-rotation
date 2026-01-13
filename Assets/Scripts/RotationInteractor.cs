@@ -45,7 +45,7 @@ public class RotationInteractor : MonoBehaviour
     private const float MAX_CURL = 180f, MAX_THUMB_CURL = 90f;
     private const float MAX_PROXIMAL_CURL = 70f, MAX_MIDDLE_CURL = 95f, MAX_DISTAL_CURL = 70f;
     private const float MAX_THUMB_PROXIMAL_CURL = 55f, MAX_THUMB_DISTAL_CURL = 45f;
-    private const float MAX_ANGLE_BTW_FRAMES = 15f;
+    private const float MAX_ANGLE_BTW_FRAMES = 5f;
     private const float CLUTCH_DWELL_TIME = 0.2f, CLUTCH_DWELL_ROTATION = 0.25f;
     private Dictionary<KeyCode, Action> _keyActions;
 
@@ -292,20 +292,21 @@ public class RotationInteractor : MonoBehaviour
             {
                 if (isAngleValid && isTriangleValid && isTriangleAreaValid)
                 {
-                    if (_deltaAngle < MAX_ANGLE_BTW_FRAMES)
-                    {
-                        Quaternion deltaScaledRotation = Quaternion.AngleAxis(_deltaAngle * _angleScaleFactor, _deltaAxis);
+                    float angleWithCeiling = Math.Min(_deltaAngle, MAX_ANGLE_BTW_FRAMES);
+                    // if (_deltaAngle < MAX_ANGLE_BTW_FRAMES)
+                    // {
+                    Quaternion deltaScaledRotation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, _deltaAxis);
                         _cubeRotation = deltaScaledRotation * _prevCubeRotation;
-                        _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
+                    _cube.transform.rotation = _worldWristRotation * _cubeRotation * _grabOffsetRotation;
                         if (_cubeGauge != null)
-                        {
-                            float a = _angleScaleFactor / MAX_SCALE_FACTOR * 2f;
-                            _cubeGauge.transform.localScale = new Vector3(a, a, a);
-                        }
+                    {
+                        float a = _angleScaleFactor / MAX_SCALE_FACTOR * 2f;
+                        _cubeGauge.transform.localScale = new Vector3(a, a, a);
+                    }
                         // Color c = _dieRenderer.material.color;
                         // c.a = 1f - _angleScaleFactor / MAX_SCALE_FACTOR;
                         // _dieRenderer.material.color = c;
-                    }
+                    // }
                 }
                 _prevCubeRotation = _cubeRotation;
 
