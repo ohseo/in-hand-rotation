@@ -76,10 +76,10 @@ public class PrototypeSceneManager : MonoBehaviour
         _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
 
         OnTarget += _rotationInteractor.OnTarget;
-        OnTarget += _releaseHandler.OnTarget;
+        // OnTarget += _releaseHandler.OnTarget;
 
         OffTarget += _rotationInteractor.OffTarget;
-        OffTarget += _releaseHandler.OffTarget;
+        // OffTarget += _releaseHandler.OffTarget;
 
         OnSceneLoad?.Invoke();
     }

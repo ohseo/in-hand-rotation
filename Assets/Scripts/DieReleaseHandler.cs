@@ -50,7 +50,7 @@ public class DieReleaseHandler : MonoBehaviour
 
             if (_rotationInteractor.IsGrabbed)
             {
-                if (spheresInContact < 2)
+                if (spheresInContact < 1)
                 {
                     OnRelease?.Invoke();
                 }
