@@ -32,8 +32,7 @@ public class HandInteractor : MonoBehaviour
     private Pose _thumbTip, _indexTip, _middleTip;
     private Pose _prevThumbTip, _prevIndexTip, _prevMiddleTip;
     private Pose _thumbProj, _indexProj, _middleProj;
-    private Pose _thumbProjWorld, _indexProjWorld, _middleProjWorld;
-    private Pose _prevThumbProjWorld, _prevIndexProjWorld, _prevMiddleProjWorld;
+    private Pose _prevThumbProj, _prevIndexProj, _prevMiddleProj;
     private Pose _triangle, _prevTriangle;
     private Pose _prevObject, _object, _objectWorld;
     private Pose _grabOffset, _grabOffsetTriangle;
@@ -92,19 +91,15 @@ public class HandInteractor : MonoBehaviour
         _indexTip.position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         _middleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        _triangle.position = GetWeightedTriangleCentroid(_thumbTipWorld.position, _indexTipWorld.position, _middleTipWorld.position);
+        _triangle.position = GetWeightedTriangleCentroid(_thumbTip.position, _indexTip.position, _middleTip.position);
 
-        _thumbProjWorld.position = ProjectClosestToPrevious(_thumbTipWorld.position, _triangle.position, 1f, _prevThumbProjWorld.position);
-        _indexProjWorld.position = ProjectClosestToPrevious(_indexTipWorld.position, _triangle.position, 1f, _prevIndexProjWorld.position);
-        _middleProjWorld.position = ProjectClosestToPrevious(_middleTipWorld.position, _triangle.position, 1f, _prevMiddleProjWorld.position);
+        _thumbProj.position = ProjectClosestToPrevious(_thumbTip.position, _triangle.position, 1f, _prevThumbProj.position);
+        _indexProj.position = ProjectClosestToPrevious(_indexTip.position, _triangle.position, 1f, _prevIndexProj.position);
+        _middleProj.position = ProjectClosestToPrevious(_middleTip.position, _triangle.position, 1f, _prevMiddleProj.position);
 
-        _prevThumbProjWorld.position = _thumbProjWorld.position;
-        _prevIndexProjWorld.position = _indexProjWorld.position;
-        _prevMiddleProjWorld.position = _middleProjWorld.position;
-
-        _thumbProj.position = _wristBone.Transform.InverseTransformPoint(_thumbProjWorld.position);
-        _indexProj.position = _wristBone.Transform.InverseTransformPoint(_indexProjWorld.position);
-        _middleProj.position = _wristBone.Transform.InverseTransformPoint(_middleProjWorld.position);
+        _prevThumbProj.position = _thumbProj.position;
+        _prevIndexProj.position = _indexProj.position;
+        _prevMiddleProj.position = _middleProj.position;
 
         Vector3 thumb, index, middle;
         if (_doProjection)
@@ -169,8 +164,7 @@ public class HandInteractor : MonoBehaviour
             _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
         }
 
-        // _objectWorld.position = _isRotating ? _wristBone.Transform.TransformPoint(_grabOffset.position) : _triangle.position + _grabOffsetTriangle.position;
-        _objectWorld.position = _triangle.position + _grabOffsetTriangle.position;
+        _objectWorld.position = _wristBone.Transform.TransformPoint(_triangle.position) + _grabOffsetTriangle.position;
 
         _rotator.transform.position = _objectWorld.position;
         _rotator.transform.rotation = _objectWorld.rotation;
@@ -194,13 +188,13 @@ public class HandInteractor : MonoBehaviour
 
     private void ResetGeometry()
     {
-        _prevThumbProjWorld.position = _thumbTipBone.Transform.position;
-        _prevIndexProjWorld.position = _indexTipBone.Transform.position;
-        _prevMiddleProjWorld.position = _middleTipBone.Transform.position;
-
         _prevThumbTip.position = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
         _prevIndexTip.position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         _prevMiddleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
+
+        _prevThumbProj.position = _prevThumbTip.position;
+        _prevIndexProj.position = _prevIndexTip.position;
+        _prevMiddleProj.position = _prevMiddleTip.position;
 
         _prevObject.rotation = Quaternion.identity;
         _prevScaleFactor = MIN_SCALE_FACTOR;
@@ -218,7 +212,7 @@ public class HandInteractor : MonoBehaviour
         if (_grabbedObject == null) return;
         _grabOffset.position = _wristBone.Transform.InverseTransformPoint(_grabbedObject.transform.position);
         _grabOffset.rotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _grabbedObject.transform.rotation;
-        _grabOffsetTriangle.position = _grabbedObject.transform.position - _triangle.position;
+        _grabOffsetTriangle.position = _grabbedObject.transform.position - _wristBone.Transform.TransformPoint(_triangle.position);
     }
 
     private void CheckGrab()
