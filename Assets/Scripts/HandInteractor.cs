@@ -39,12 +39,13 @@ public class HandInteractor : MonoBehaviour
     private Pose _grabOffset;
     private float _angleScaleFactor, _prevScaleFactor;
     private float _clutchDwellDuration = 0f;
-    private bool _isDwelled = false, _isRotating = false;
+    private bool _isDwelled = false, _isRotating = true;
     private const float GRAB_DETECTION_RADIUS = 0.01f;
     private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 5f;
     private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
-    private const float CLUTCH_DWELL_TIME = 0.2f, CLUTCH_DWELL_ROTATION = 0.25f;
+    private const float CLUTCH_DWELL_TIME = 0.5f, CLUTCH_DWELL_ROTATION = 0.25f;
+    private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
     // Start is called before the first frame update
     void Start()
@@ -72,9 +73,14 @@ public class HandInteractor : MonoBehaviour
         if (_grabbedObject == null) CheckGrab();
         else CheckRelease();
 
-        // if (_grabbedObject == null) return;
+        if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
+        else _isDwelled = false;
 
-        //transforms are on the local coordinates based on the wrist if not stated otherwise
+        if (_isDwelled && _isRotating) StartClutching();
+        // if (!_isDwelled && !_isRotating) EndClutching();
+
+        // should be performed even if no object is grabbed
+        // transforms are on the local coordinates based on the wrist if not stated otherwise
         _wristWorld.position = _wristBone.Transform.position;
         _wristWorld.rotation = _wristBone.Transform.rotation;
 
@@ -144,12 +150,10 @@ public class HandInteractor : MonoBehaviour
             _prevTriangle.rotation = _triangle.rotation;
         }
 
-        if (deltaAngle < CLUTCH_DWELL_ROTATION) _clutchDwellDuration += Time.deltaTime;
-        if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
-        else _isDwelled = false;
+        // skip from here if no object is grabbed
+        if (_grabbedObject == null) return;
 
-        // if (_isDwelled && _isRotating) StartClutching();
-        // if (!_isDwelled && !_isRotating) EndClutching();
+        if (deltaAngle < CLUTCH_DWELL_ROTATION) _clutchDwellDuration += Time.deltaTime;
 
         if (_isRotating)
         {
@@ -199,7 +203,6 @@ public class HandInteractor : MonoBehaviour
 
         _prevObject.rotation = Quaternion.identity;
         _prevScaleFactor = MIN_SCALE_FACTOR;
-        _clutchDwellDuration = 0f;
     }
 
     private void ResetOffset()
@@ -226,8 +229,8 @@ public class HandInteractor : MonoBehaviour
             if (thumb.TryGetComponent(out GrabbableObject grabbable))
             {
                 _grabbedObject = grabbable;
-                OnGrab();
                 _grabbedObject.OnGrab(_rotator.transform);
+                OnGrab();
             }
         }        
     }
@@ -245,8 +248,9 @@ public class HandInteractor : MonoBehaviour
 
         if (contactCount < 2)
         {
-            _grabbedObject.OnRelease();
+            EndClutching();
             OnRelease();
+            _grabbedObject.OnRelease();
             _grabbedObject = null;
 
         }
@@ -398,27 +402,52 @@ public class HandInteractor : MonoBehaviour
     {
         ResetGeometry();
         GetOffset();
+        _clutchDwellDuration = 0f;
         _isDwelled = false;
-        _isRotating = true;
     }
 
     public void OnRelease()
     {
         ResetGeometry();
         ResetOffset();
+        _clutchDwellDuration = 0f;
         _isDwelled = false;
-        _isRotating = false;
     }
 
     public void StartClutching()
     {
+        ResetGeometry();
         GetOffset();
         _isRotating = false;
+        if (_grabbedObject != null)
+        {
+            _grabbedObject.SetOutlineWidth(OUTLINE_WIDTH_CLUTCHING);
+        }
     }
 
     public void EndClutching()
     {
         _isRotating = true;
+        if (_grabbedObject != null)
+        {
+            _grabbedObject.SetOutlineWidth(OUTLINE_WIDTH_DEFAULT);
+        }
+    }
+
+    public void OnTarget()
+    {
+        if (_grabbedObject != null)
+        {
+            _grabbedObject.SetOutlineColor(Color.green);
+        }
+    }
+
+    public void OffTarget()
+    {
+        if (_grabbedObject != null)
+        {
+            _grabbedObject.SetOutlineColor(Color.blue);
+        }
     }
 
     public void SetOVRSkeleton(OVRSkeleton s)

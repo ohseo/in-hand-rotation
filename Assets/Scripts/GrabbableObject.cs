@@ -8,11 +8,17 @@ using UnityEngine.Jobs;
 public class GrabbableObject : MonoBehaviour
 {
     private Transform _followTarget;
-    private Rigidbody _rb;
+    private Outline _outline;
 
     void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
+        _outline = this.GetComponentInChildren<Outline>();
+        if (_outline != null)
+        {
+            _outline.OutlineColor = Color.blue;
+            _outline.OutlineWidth = 3f;
+            _outline.enabled = false;
+        }
     }
 
     void Update()
@@ -27,10 +33,23 @@ public class GrabbableObject : MonoBehaviour
     public void OnGrab(Transform handTransform)
     {
         _followTarget = handTransform;
+        if (_outline != null) _outline.enabled = true;
     }
 
     public void OnRelease()
     {
         _followTarget = null;
+        if (_outline != null) _outline.enabled = false;
+        Debug.Log("Event: Outline Disabled");
+    }
+
+    public void SetOutlineWidth(float width)
+    {
+        if (_outline != null) _outline.OutlineWidth = width;
+    }
+
+    public void SetOutlineColor(Color c)
+    {
+        if (_outline != null) _outline.OutlineColor = c;
     }
 }
