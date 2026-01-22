@@ -12,12 +12,10 @@ using Quaternion = UnityEngine.Quaternion;
 public class HandInteractor : MonoBehaviour
 {
     [SerializeField]
-    GameObject _cube;
-    [SerializeField]
     private TextMeshProUGUI _textbox;
     [SerializeField]
     private bool _isInDebugMode;
-    private bool _doProjection = false;
+    private bool _doProjection = true;
     private Dictionary<KeyCode, Action> _keyActions;
     [SerializeField]
     private OVRSkeleton _ovrSkeleton;
@@ -29,14 +27,15 @@ public class HandInteractor : MonoBehaviour
 
     private List<GameObject> _spheres = new List<GameObject>();
     private GameObject _thumbSphere, _indexSphere, _middleSphere;
-    private Quaternion _wristRotationWorld;
-    private Vector3 _wristPositionWorld;
-    private Vector3 _prevThumbProjWorld, _prevIndexProjWorld, _prevMiddleProjWorld;
-    private Vector3 _prevThumbPosition, _prevIndexPosition, _prevMiddlePosition;
-    private Vector3 _triangleCentroid;
-    private Quaternion _prevTriangleRotation, _triangleRotation;
-    private Quaternion _prevObjectRotation, _objectRotation, _objectRotationWorld;
-    private Vector3 _prevObjectPosition, _objectPosition, _objectPositionWorld;
+
+    private Pose _wristWorld, _thumbTipWorld, _indexTipWorld, _middleTipWorld;
+    private Pose _thumbTip, _indexTip, _middleTip;
+    private Pose _prevThumbTip, _prevIndexTip, _prevMiddleTip;
+    private Pose _thumbProj, _indexProj, _middleProj;
+    private Pose _thumbProjWorld, _indexProjWorld, _middleProjWorld;
+    private Pose _prevThumbProjWorld, _prevIndexProjWorld, _prevMiddleProjWorld;
+    private Pose _triangle, _prevTriangle;
+    private Pose _prevObject, _object, _objectWorld;
     private Pose _grabOffset;
     private float _angleScaleFactor, _prevScaleFactor;
     private float _clutchDwellDuration = 0f;
@@ -76,43 +75,43 @@ public class HandInteractor : MonoBehaviour
         // if (_grabbedObject == null) return;
 
         //transforms are on the local coordinates based on the wrist if not stated otherwise
-        _wristPositionWorld = _wristBone.Transform.position;
-        _wristRotationWorld = _wristBone.Transform.rotation;
+        _wristWorld.position = _wristBone.Transform.position;
+        _wristWorld.rotation = _wristBone.Transform.rotation;
 
-        Vector3 thumbTipPositionWorld = _thumbTipBone.Transform.position;
-        Vector3 indexTipPositionWorld = _indexTipBone.Transform.position;
-        Vector3 middleTipPositionWorld = _middleTipBone.Transform.position;
+        _thumbTipWorld.position = _thumbTipBone.Transform.position;
+        _indexTipWorld.position = _indexTipBone.Transform.position;
+        _middleTipWorld.position = _middleTipBone.Transform.position;
 
-        Vector3 thumbTipPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
-        Vector3 indexTipPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
-        Vector3 middleTipPosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
+        _thumbTip.position = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
+        _indexTip.position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
+        _middleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        _triangleCentroid = GetWeightedTriangleCentroid(thumbTipPositionWorld, indexTipPositionWorld, middleTipPositionWorld);
+        _triangle.position = GetWeightedTriangleCentroid(_thumbTipWorld.position, _indexTipWorld.position, _middleTipWorld.position);
 
-        Vector3 thumbProjWorld = ProjectClosestToPrevious(thumbTipPositionWorld, _triangleCentroid, 1f, _prevThumbProjWorld);
-        Vector3 indexProjWorld = ProjectClosestToPrevious(indexTipPositionWorld, _triangleCentroid, 1f, _prevIndexProjWorld);
-        Vector3 middleProjWorld = ProjectClosestToPrevious(middleTipPositionWorld, _triangleCentroid, 1f, _prevMiddleProjWorld);
+        _thumbProjWorld.position = ProjectClosestToPrevious(_thumbTipWorld.position, _triangle.position, 1f, _prevThumbProjWorld.position);
+        _indexProjWorld.position = ProjectClosestToPrevious(_indexTipWorld.position, _triangle.position, 1f, _prevIndexProjWorld.position);
+        _middleProjWorld.position = ProjectClosestToPrevious(_middleTipWorld.position, _triangle.position, 1f, _prevMiddleProjWorld.position);
 
-        _prevThumbProjWorld = thumbProjWorld;
-        _prevIndexProjWorld = indexProjWorld;
-        _prevMiddleProjWorld = middleProjWorld;
+        _prevThumbProjWorld.position = _thumbProjWorld.position;
+        _prevIndexProjWorld.position = _indexProjWorld.position;
+        _prevMiddleProjWorld.position = _middleProjWorld.position;
 
-        Vector3 thumbProj = _wristBone.Transform.InverseTransformPoint(thumbProjWorld);
-        Vector3 indexProj = _wristBone.Transform.InverseTransformPoint(indexProjWorld);
-        Vector3 middleProj = _wristBone.Transform.InverseTransformPoint(middleProjWorld);
+        _thumbProj.position = _wristBone.Transform.InverseTransformPoint(_thumbProjWorld.position);
+        _indexProj.position = _wristBone.Transform.InverseTransformPoint(_indexProjWorld.position);
+        _middleProj.position = _wristBone.Transform.InverseTransformPoint(_middleProjWorld.position);
 
         Vector3 thumb, index, middle;
         if (_doProjection)
         {
-            thumb = thumbProj;
-            index = indexProj;
-            middle = middleProj;
+            thumb = _thumbProj.position;
+            index = _indexProj.position;
+            middle = _middleProj.position;
         }
         else
         {
-            thumb = thumbTipPosition;
-            index = indexTipPosition;
-            middle = middleTipPosition;
+            thumb = _thumbTip.position;
+            index = _indexTip.position;
+            middle = _middleTip.position;
         }
 
         // _spheres[0].transform.position = thumbTipPositionWorld;
@@ -122,7 +121,7 @@ public class HandInteractor : MonoBehaviour
         bool isAngleValid, isTriangleValid, isAreaValid;
 
         isAngleValid = CalculateAngleAtVertex(thumb, index, middle, out float triangleP1Angle);
-        isTriangleValid = CalculateTriangleOrientationWithOffset(thumb, index, middle, out _triangleRotation);
+        isTriangleValid = CalculateTriangleOrientationWithOffset(thumb, index, middle, out _triangle.rotation);
         isAreaValid = CalculateTriangleArea(thumb, index, middle, out float triangleArea);
 
         float fingerTravel = GetFingerTravelDistance();
@@ -130,9 +129,9 @@ public class HandInteractor : MonoBehaviour
         _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, scaleFactor, LERP_SMOOTHING_FACTOR * Time.deltaTime);
         _prevScaleFactor = _angleScaleFactor;
 
-        _prevThumbPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
-        _prevIndexPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
-        _prevMiddlePosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
+        _prevThumbTip.position = _thumbTip.position;
+        _prevIndexTip.position = _indexTip.position;
+        _prevMiddleTip.position = _middleTip.position;
 
         float deltaAngle = 0f;
         Vector3 deltaAxis = Vector3.one;
@@ -140,9 +139,9 @@ public class HandInteractor : MonoBehaviour
         // calculate the rotation
         if (isAngleValid && isTriangleValid && isAreaValid)
         {
-            Quaternion deltaRotation = _triangleRotation * Quaternion.Inverse(_prevTriangleRotation);
+            Quaternion deltaRotation = _triangle.rotation * Quaternion.Inverse(_prevTriangle.rotation);
             deltaRotation.ToAngleAxis(out deltaAngle, out deltaAxis);
-            _prevTriangleRotation = _triangleRotation;
+            _prevTriangle.rotation = _triangle.rotation;
         }
 
         if (deltaAngle < CLUTCH_DWELL_ROTATION) _clutchDwellDuration += Time.deltaTime;
@@ -156,20 +155,20 @@ public class HandInteractor : MonoBehaviour
         {
             float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
             Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
-            _objectRotation = deltaScaledRoation * _prevObjectRotation;
-            _objectRotationWorld = _wristRotationWorld * _objectRotation * _grabOffset.rotation;
-            _prevObjectRotation = _objectRotation;
+            _object.rotation = deltaScaledRoation * _prevObject.rotation;
+            _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
+            _prevObject.rotation = _object.rotation;
         }
         else
         {
-            _objectRotation = _prevObjectRotation;
-            _objectRotationWorld = _wristRotationWorld * _objectRotation * _grabOffset.rotation;
+            _object.rotation = _prevObject.rotation;
+            _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
         }
 
-        _objectPositionWorld = _wristBone.Transform.TransformPoint(_grabOffset.position);
+        _objectWorld.position = _wristBone.Transform.TransformPoint(_grabOffset.position);
 
-        _rotator.transform.position = _objectPositionWorld;
-        _rotator.transform.rotation = _objectRotationWorld;
+        _rotator.transform.position = _objectWorld.position;
+        _rotator.transform.rotation = _objectWorld.rotation;
     }
 
     private void InitGeometry()
@@ -179,26 +178,26 @@ public class HandInteractor : MonoBehaviour
         _thumbTipBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_ThumbTip);
         _wristBone = _ovrSkeleton.Bones.FirstOrDefault(bone => bone.Id == OVRSkeleton.BoneId.XRHand_Wrist);
 
-        _wristPositionWorld = _wristBone.Transform.position;
-        _wristRotationWorld = _wristBone.Transform.rotation;
+        _wristWorld.position = _wristBone.Transform.position;
+        _wristWorld.rotation = _wristBone.Transform.rotation;
 
-        _prevTriangleRotation = Quaternion.identity;
-        _prevObjectRotation = Quaternion.identity;
+        _prevTriangle.rotation = Quaternion.identity;
+        _prevObject.rotation = Quaternion.identity;
 
         _rotator = new GameObject();
     }
 
     private void ResetGeometry()
     {
-        _prevThumbProjWorld = _thumbTipBone.Transform.position;
-        _prevIndexProjWorld = _indexTipBone.Transform.position;
-        _prevMiddleProjWorld = _middleTipBone.Transform.position;
+        _prevThumbProjWorld.position = _thumbTipBone.Transform.position;
+        _prevIndexProjWorld.position = _indexTipBone.Transform.position;
+        _prevMiddleProjWorld.position = _middleTipBone.Transform.position;
 
-        _prevThumbPosition = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
-        _prevIndexPosition = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
-        _prevMiddlePosition = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
+        _prevThumbTip.position = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
+        _prevIndexTip.position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
+        _prevMiddleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        _prevObjectRotation = Quaternion.identity;
+        _prevObject.rotation = Quaternion.identity;
         _prevScaleFactor = MIN_SCALE_FACTOR;
         _clutchDwellDuration = 0f;
     }
@@ -253,22 +252,6 @@ public class HandInteractor : MonoBehaviour
         }
     }
 
-    public GameObject GetObjectAtFingers()
-    {
-        Collider[] collidersAtThumb = Physics.OverlapSphere(_thumbTipBone.Transform.position, GRAB_DETECTION_RADIUS, _interactableLayer);
-        Collider[] collidersAtIndex = Physics.OverlapSphere(_indexTipBone.Transform.position, GRAB_DETECTION_RADIUS, _interactableLayer);
-        Collider[] collidersAtMiddle = Physics.OverlapSphere(_middleTipBone.Transform.position, GRAB_DETECTION_RADIUS, _interactableLayer);
-        if (collidersAtThumb.Length < 1) return null;
-        if (collidersAtIndex.Length < 1) return null;
-        if (collidersAtMiddle.Length < 1) return null;
-
-        if (collidersAtThumb[0].gameObject == collidersAtIndex[0].gameObject && collidersAtThumb[0].gameObject == collidersAtMiddle[0].gameObject)
-        {
-            return collidersAtThumb[0].gameObject;
-        }
-        return null;
-    }
-
     public GameObject GetObjectAtFinger(Vector3 tipPosition)
     {
         Collider[] colliders = Physics.OverlapSphere(tipPosition, GRAB_DETECTION_RADIUS, _interactableLayer);
@@ -281,9 +264,9 @@ public class HandInteractor : MonoBehaviour
         Vector3 index = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         Vector3 middle = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        float deltaThumb = (thumb - _prevThumbPosition).magnitude * 100f;
-        float deltaIndex = (index - _prevIndexPosition).magnitude * 100f;
-        float deltaMiddle = (middle - _prevMiddlePosition).magnitude * 100f;
+        float deltaThumb = (thumb - _prevThumbTip.position).magnitude * 100f;
+        float deltaIndex = (index - _prevIndexTip.position).magnitude * 100f;
+        float deltaMiddle = (middle - _prevMiddleTip.position).magnitude * 100f;
 
         return deltaThumb + deltaIndex + deltaMiddle;
     }
