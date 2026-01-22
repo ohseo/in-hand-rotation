@@ -19,7 +19,9 @@ public class PrototypeSceneManager : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI _text;
     [SerializeField]
-    private RotationInteractor _rotationInteractor;
+    private RotationInteractor _rotationInteractorRight;
+    [SerializeField]
+    private RotationInteractor _rotationInteractorLeft;
     [SerializeField]
     private bool _isBaseline = false;
 
@@ -42,12 +44,12 @@ public class PrototypeSceneManager : MonoBehaviour
     void Awake()
     {
         GenerateDie();
-        _rotationInteractor.SetCube(_die);
+        _rotationInteractorRight.SetCube(_die);
 
-        if (_isLeftHanded) { _rotationInteractor.SetOVRSkeleton(_ovrLeftSkeleton);}
-        else { _rotationInteractor.SetOVRSkeleton(_ovrRightSkeleton);}
+        _rotationInteractorLeft.SetOVRSkeleton(_ovrLeftSkeleton);
+        _rotationInteractorRight.SetOVRSkeleton(_ovrRightSkeleton);
 
-        _rotationInteractor.SetBaseline(_isBaseline);
+        _rotationInteractorRight.SetBaseline(_isBaseline);
     }
 
     // Start is called before the first frame update
@@ -61,24 +63,24 @@ public class PrototypeSceneManager : MonoBehaviour
         OnTrialStart += StartTrial;
 
         OnTrialEnd += EndTrial;
-        OnTrialEnd += _rotationInteractor.Reset;
+        OnTrialEnd += _rotationInteractorRight.Reset;
 
         OnTrialReset += ResetTrial;
-        OnTrialReset += _rotationInteractor.Reset;
+        OnTrialReset += _rotationInteractorRight.Reset;
 
         _grabHandler.OnGrab += OnGrab;
-        _grabHandler.OnGrab += _rotationInteractor.OnGrab;
+        _grabHandler.OnGrab += _rotationInteractorRight.OnGrab;
 
-        _releaseHandler.OnRelease += _rotationInteractor.OnRelease;
+        _releaseHandler.OnRelease += _rotationInteractorRight.OnRelease;
 
-        _rotationInteractor.OnClutchEnd += _rotationInteractor.EndClutching;
+        _rotationInteractorRight.OnClutchEnd += _rotationInteractorRight.EndClutching;
 
-        _rotationInteractor.OnClutchStart += _rotationInteractor.StartClutching;
+        _rotationInteractorRight.OnClutchStart += _rotationInteractorRight.StartClutching;
 
-        OnTarget += _rotationInteractor.OnTarget;
+        OnTarget += _rotationInteractorRight.OnTarget;
         // OnTarget += _releaseHandler.OnTarget;
 
-        OffTarget += _rotationInteractor.OffTarget;
+        OffTarget += _rotationInteractorRight.OffTarget;
         // OffTarget += _releaseHandler.OffTarget;
 
         OnSceneLoad?.Invoke();
