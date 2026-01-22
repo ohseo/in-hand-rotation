@@ -40,7 +40,6 @@ public class GrabbableObject : MonoBehaviour
     {
         _followTarget = null;
         if (_outline != null) _outline.enabled = false;
-        Debug.Log("Event: Outline Disabled");
     }
 
     public void SetOutlineWidth(float width)

@@ -36,7 +36,7 @@ public class HandInteractor : MonoBehaviour
     private Pose _prevThumbProjWorld, _prevIndexProjWorld, _prevMiddleProjWorld;
     private Pose _triangle, _prevTriangle;
     private Pose _prevObject, _object, _objectWorld;
-    private Pose _grabOffset;
+    private Pose _grabOffset, _grabOffsetTriangle;
     private float _angleScaleFactor, _prevScaleFactor;
     private float _clutchDwellDuration = 0f;
     private bool _isDwelled = false, _isRotating = true;
@@ -169,7 +169,8 @@ public class HandInteractor : MonoBehaviour
             _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
         }
 
-        _objectWorld.position = _wristBone.Transform.TransformPoint(_grabOffset.position);
+        // _objectWorld.position = _isRotating ? _wristBone.Transform.TransformPoint(_grabOffset.position) : _triangle.position + _grabOffsetTriangle.position;
+        _objectWorld.position = _triangle.position + _grabOffsetTriangle.position;
 
         _rotator.transform.position = _objectWorld.position;
         _rotator.transform.rotation = _objectWorld.rotation;
@@ -209,6 +210,7 @@ public class HandInteractor : MonoBehaviour
     {
         _grabOffset.position = Vector3.zero;
         _grabOffset.rotation = Quaternion.identity;
+        _grabOffsetTriangle.position = Vector3.zero;
     }
 
     private void GetOffset()
@@ -216,6 +218,7 @@ public class HandInteractor : MonoBehaviour
         if (_grabbedObject == null) return;
         _grabOffset.position = _wristBone.Transform.InverseTransformPoint(_grabbedObject.transform.position);
         _grabOffset.rotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _grabbedObject.transform.rotation;
+        _grabOffsetTriangle.position = _grabbedObject.transform.position - _triangle.position;
     }
 
     private void CheckGrab()
