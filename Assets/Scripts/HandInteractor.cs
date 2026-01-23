@@ -8,11 +8,12 @@ using Unity.VisualScripting;
 using System.Numerics;
 using Vector3 = UnityEngine.Vector3;
 using Quaternion = UnityEngine.Quaternion;
+using System.Runtime.CompilerServices;
 
 public class HandInteractor : MonoBehaviour
 {
-    [SerializeField]
-    private TextMeshProUGUI _textbox;
+    // [SerializeField]
+    // private TextMeshProUGUI _textbox;
     [SerializeField]
     private bool _isInDebugMode;
     private bool _doProjection = true;
@@ -39,23 +40,32 @@ public class HandInteractor : MonoBehaviour
     private float _angleScaleFactor, _prevScaleFactor;
     private float _clutchDwellDuration = 0f;
     private bool _isDwelled = false, _isRotating = true;
+    private OneEuroFilter<Vector3>[] _oneEuroFiltersVector3;
     private const float GRAB_DETECTION_RADIUS = 0.01f;
     private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 5f;
     private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
-    private const float CLUTCH_DWELL_TIME = 0.5f, CLUTCH_DWELL_ROTATION = 0.25f;
+    private const float EURO_MIN_CUTOFF = 1.0f, EURO_BETA = 0.1f, EURO_D_CUTOFF = 1.0f;
+    private const float CLUTCH_DWELL_TIME = 0.1f, CLUTCH_DWELL_ROTATION = 0.1f;
     private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
     // Start is called before the first frame update
     void Start()
     {
-        // for (int i = 0; i < 3; i++)
+        // for (int i = 0; i < 6; i++)
         // {
         //     GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         //     sphere.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
         //     sphere.GetComponent<Collider>().isTrigger = true;
         //     _spheres.Add(sphere);
         // }
+
+        _oneEuroFiltersVector3 = new OneEuroFilter<Vector3>[3];
+        for (int i = 0; i < 3; i++)
+        {
+            _oneEuroFiltersVector3[i] = new OneEuroFilter<Vector3>(EURO_MIN_CUTOFF, EURO_BETA, EURO_D_CUTOFF);
+        }
+
         InitGeometry();
         ResetGeometry();
 
@@ -93,9 +103,17 @@ public class HandInteractor : MonoBehaviour
 
         _triangle.position = GetWeightedTriangleCentroid(_thumbTip.position, _indexTip.position, _middleTip.position);
 
-        _thumbProj.position = ProjectClosestToPrevious(_thumbTip.position, _triangle.position, 1f, _prevThumbProj.position);
-        _indexProj.position = ProjectClosestToPrevious(_indexTip.position, _triangle.position, 1f, _prevIndexProj.position);
-        _middleProj.position = ProjectClosestToPrevious(_middleTip.position, _triangle.position, 1f, _prevMiddleProj.position);
+        Pose thumbEuro, indexEuro, middleEuro;
+        thumbEuro.position = _oneEuroFiltersVector3[0].Filter(_thumbTip.position, Time.deltaTime);
+        indexEuro.position = _oneEuroFiltersVector3[1].Filter(_indexTip.position, Time.deltaTime);
+        middleEuro.position = _oneEuroFiltersVector3[2].Filter(_middleTip.position, Time.deltaTime);
+
+        // _thumbProj.position = ProjectClosestToPrevious(_thumbTip.position, _triangle.position, 0.1f, _prevThumbProj.position);
+        // _indexProj.position = ProjectClosestToPrevious(_indexTip.position, _triangle.position, 0.1f, _prevIndexProj.position);
+        // _middleProj.position = ProjectClosestToPrevious(_middleTip.position, _triangle.position, 0.1f, _prevMiddleProj.position);
+        _thumbProj.position = ProjectClosestToPrevious(thumbEuro.position, _triangle.position, 0.1f, _prevThumbProj.position);
+        _indexProj.position = ProjectClosestToPrevious(indexEuro.position, _triangle.position, 0.1f, _prevIndexProj.position);
+        _middleProj.position = ProjectClosestToPrevious(middleEuro.position, _triangle.position, 0.1f, _prevMiddleProj.position);
 
         _prevThumbProj.position = _thumbProj.position;
         _prevIndexProj.position = _indexProj.position;
@@ -110,14 +128,18 @@ public class HandInteractor : MonoBehaviour
         }
         else
         {
-            thumb = _thumbTip.position;
-            index = _indexTip.position;
-            middle = _middleTip.position;
+            thumb = thumbEuro.position;
+            index = indexEuro.position;
+            middle = middleEuro.position;
         }
 
-        // _spheres[0].transform.position = thumbTipPositionWorld;
-        // _spheres[1].transform.position = indexTipPositionWorld;
-        // _spheres[2].transform.position = middleTipPositionWorld;
+        // _spheres[0].transform.position = thumb;
+        // _spheres[1].transform.position = index;
+        // _spheres[2].transform.position = middle;
+
+        // _spheres[3].transform.position = _thumbTip.position;
+        // _spheres[4].transform.position = _indexTip.position;
+        // _spheres[5].transform.position = _middleTip.position;
 
         bool isAngleValid, isTriangleValid, isAreaValid;
 
