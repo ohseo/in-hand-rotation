@@ -49,6 +49,8 @@ public class HandInteractor : MonoBehaviour
     private const float CLUTCH_DWELL_TIME = 0.1f, CLUTCH_DWELL_ROTATION = 0.1f;
     private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
+    public event Action OnGrab, OnRelease, OnClutchEnd, OnClutchStart;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -150,6 +152,7 @@ public class HandInteractor : MonoBehaviour
         float fingerTravel = GetFingerTravelDistance();
         float scaleFactor = GetScaleFactor(fingerTravel);
         _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, scaleFactor, LERP_SMOOTHING_FACTOR * Time.deltaTime);
+        // _angleScaleFactor = MAX_SCALE_FACTOR;
         _prevScaleFactor = _angleScaleFactor;
 
         _prevThumbTip.position = _thumbTip.position;
@@ -205,6 +208,7 @@ public class HandInteractor : MonoBehaviour
         _prevTriangle.rotation = Quaternion.identity;
         _prevObject.rotation = Quaternion.identity;
 
+        if (_rotator != null) Destroy(_rotator);
         _rotator = new GameObject();
     }
 
@@ -249,7 +253,7 @@ public class HandInteractor : MonoBehaviour
             {
                 _grabbedObject = grabbable;
                 _grabbedObject.OnGrab(_rotator.transform);
-                OnGrab();
+                OnGrab?.Invoke();
             }
         }        
     }
@@ -267,8 +271,8 @@ public class HandInteractor : MonoBehaviour
 
         if (contactCount < 2)
         {
-            EndClutching();
-            OnRelease();
+            OnClutchEnd?.Invoke();
+            OnRelease?.Invoke();
             _grabbedObject.OnRelease();
             _grabbedObject = null;
 
@@ -287,15 +291,24 @@ public class HandInteractor : MonoBehaviour
         Vector3 index = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         Vector3 middle = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        float deltaThumb = (thumb - _prevThumbTip.position).magnitude * 100f;
-        float deltaIndex = (index - _prevIndexTip.position).magnitude * 100f;
-        float deltaMiddle = (middle - _prevMiddleTip.position).magnitude * 100f;
+        // in mm
+        float deltaThumb = (thumb - _prevThumbTip.position).magnitude * 1000f;
+        float deltaIndex = (index - _prevIndexTip.position).magnitude * 1000f;
+        float deltaMiddle = (middle - _prevMiddleTip.position).magnitude * 1000f;
+
+        float speedThumb = deltaThumb / Time.deltaTime;
+        float speedIndex = deltaIndex / Time.deltaTime;
+        float speedMiddle = deltaMiddle / Time.deltaTime;
+
+        // _text.text = $"{speedThumb:F2}\n{speedIndex:F2}\n{speedMiddle:F2}";
 
         return deltaThumb + deltaIndex + deltaMiddle;
     }
 
     public float GetScaleFactor(float distance)
     {
+        // init overshoot exception needed
+        
         if (distance < MIN_TRAVEL_DISTANCE) return MIN_SCALE_FACTOR;
         else if (distance > MAX_TRAVEL_DISTANCE) return MAX_SCALE_FACTOR;
         else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE) * distance + (MAX_TRAVEL_DISTANCE * MIN_SCALE_FACTOR - MIN_TRAVEL_DISTANCE * MAX_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE);
@@ -417,7 +430,7 @@ public class HandInteractor : MonoBehaviour
         else return neg;
     }
 
-    public void OnGrab()
+    public void GrabObject()
     {
         ResetGeometry();
         GetOffset();
@@ -425,7 +438,7 @@ public class HandInteractor : MonoBehaviour
         _isDwelled = false;
     }
 
-    public void OnRelease()
+    public void ReleaseObject()
     {
         ResetGeometry();
         ResetOffset();
@@ -467,6 +480,14 @@ public class HandInteractor : MonoBehaviour
         {
             _grabbedObject.SetOutlineColor(Color.blue);
         }
+    }
+
+    public void Reset()
+    {
+        OffTarget();
+        EndClutching();
+        ReleaseObject();
+        InitGeometry();
     }
 
     public void SetOVRSkeleton(OVRSkeleton s)
