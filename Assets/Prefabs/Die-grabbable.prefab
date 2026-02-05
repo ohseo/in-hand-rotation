@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6268719573303422063}
   - component: {fileID: 9069967115678708260}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: x
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -148,7 +148,7 @@ GameObject:
   - component: {fileID: 807801365103904985}
   - component: {fileID: 7951680260467570239}
   - component: {fileID: 4747305010336777800}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Die-grabbable
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -244,7 +244,7 @@ GameObject:
   - component: {fileID: 6437540661298347360}
   - component: {fileID: 3106169000399201140}
   - component: {fileID: 4993661912975802873}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: default
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -344,7 +344,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4509603857709671459}
   - component: {fileID: 3725207556316738510}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: DebugGizmo
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -394,7 +394,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4074245618333245922}
   - component: {fileID: 2482269700529519954}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: z
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -530,7 +530,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3570376056209425372}
   - component: {fileID: 2472088081131578627}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: y
   m_TagString: Untagged
   m_Icon: {fileID: 0}
