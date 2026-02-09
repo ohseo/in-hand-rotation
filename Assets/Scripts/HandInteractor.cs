@@ -16,7 +16,6 @@ public class HandInteractor : MonoBehaviour
     // private TextMeshProUGUI _textbox;
     [SerializeField]
     private bool _isInDebugMode;
-    private bool _doProjection = true;
     private Dictionary<KeyCode, Action> _keyActions;
     [SerializeField]
     private OVRSkeleton _ovrSkeleton;
@@ -73,8 +72,8 @@ public class HandInteractor : MonoBehaviour
 
         _keyActions = new Dictionary<KeyCode, Action>
         {
-            {KeyCode.P, () => _doProjection = true},
-            {KeyCode.O, () => _doProjection = false}
+            // {KeyCode.P, () => _doProjection = true},
+            // {KeyCode.O, () => _doProjection = false}
         };
     }
 
@@ -110,30 +109,10 @@ public class HandInteractor : MonoBehaviour
         indexEuro.position = _oneEuroFiltersVector3[1].Filter(_indexTip.position, Time.deltaTime);
         middleEuro.position = _oneEuroFiltersVector3[2].Filter(_middleTip.position, Time.deltaTime);
 
-        // _thumbProj.position = ProjectClosestToPrevious(_thumbTip.position, _triangle.position, 0.1f, _prevThumbProj.position);
-        // _indexProj.position = ProjectClosestToPrevious(_indexTip.position, _triangle.position, 0.1f, _prevIndexProj.position);
-        // _middleProj.position = ProjectClosestToPrevious(_middleTip.position, _triangle.position, 0.1f, _prevMiddleProj.position);
-        _thumbProj.position = ProjectClosestToPrevious(thumbEuro.position, _triangle.position, 0.1f, _prevThumbProj.position);
-        _indexProj.position = ProjectClosestToPrevious(indexEuro.position, _triangle.position, 0.1f, _prevIndexProj.position);
-        _middleProj.position = ProjectClosestToPrevious(middleEuro.position, _triangle.position, 0.1f, _prevMiddleProj.position);
-
-        _prevThumbProj.position = _thumbProj.position;
-        _prevIndexProj.position = _indexProj.position;
-        _prevMiddleProj.position = _middleProj.position;
-
         Vector3 thumb, index, middle;
-        if (_doProjection)
-        {
-            thumb = _thumbProj.position;
-            index = _indexProj.position;
-            middle = _middleProj.position;
-        }
-        else
-        {
             thumb = thumbEuro.position;
             index = indexEuro.position;
             middle = middleEuro.position;
-        }
 
         // _spheres[0].transform.position = thumb;
         // _spheres[1].transform.position = index;
@@ -409,25 +388,6 @@ public class HandInteractor : MonoBehaviour
         orientation = baseRotation * Quaternion.Euler(0, angleOffset, 0);
 
         return true;
-    }
-
-    private Vector3 ProjectClosestToPrevious(Vector3 point, Vector3 center, float radius, Vector3 prevPoint)
-    {
-        Vector3 direction = point - center;
-        if (direction.sqrMagnitude < 0.000001f)
-        {
-            return prevPoint;
-        }
-        direction.Normalize();
-
-        Vector3 pos = center + direction * radius;
-        Vector3 neg = center - direction * radius;
-
-        float distPos = (pos - prevPoint).sqrMagnitude;
-        float distNeg = (neg - prevPoint).sqrMagnitude;
-
-        if (distPos < distNeg) return pos;
-        else return neg;
     }
 
     public void GrabObject()
