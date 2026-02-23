@@ -15,7 +15,7 @@ public class EvaluationSceneManager : MonoBehaviour
     [SerializeField]
     private OVRSkeleton _ovrSkeletonRight, _ovrSkeletonLeft;
 
-    private const int MAX_TRIAL_NUM = 5;
+    private const int MAX_TRIAL_NUM = 100;
     private int _trialNum = 1;
 
     private GameObject _die, _target;

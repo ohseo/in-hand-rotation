@@ -9,6 +9,8 @@ using System.Numerics;
 using Vector3 = UnityEngine.Vector3;
 using Quaternion = UnityEngine.Quaternion;
 using System.Runtime.CompilerServices;
+using Oculus.Interaction;
+using System.IO;
 
 public class HandInteractor : MonoBehaviour
 {
@@ -31,24 +33,36 @@ public class HandInteractor : MonoBehaviour
     private Pose _wristWorld, _thumbTipWorld, _indexTipWorld, _middleTipWorld;
     private Pose _thumbTip, _indexTip, _middleTip;
     private Pose _prevThumbTip, _prevIndexTip, _prevMiddleTip;
-    private Pose _thumbProj, _indexProj, _middleProj;
-    private Pose _prevThumbProj, _prevIndexProj, _prevMiddleProj;
     private Pose _triangle, _prevTriangle;
     private Pose _prevObject, _object, _objectWorld;
     private Pose _grabOffset, _grabOffsetTriangle;
-    private float _angleScaleFactor, _prevScaleFactor;
+    private float _angleScaleFactor = 1f, _prevScaleFactor;
     private float _clutchDwellDuration = 0f;
     private bool _isDwelled = false, _isRotating = true;
     private OneEuroFilter<Vector3>[] _oneEuroFiltersVector3;
-    private const float GRAB_DETECTION_RADIUS = 0.01f;
+    private SigmoidFunction _sigmoid = new SigmoidFunction();
+
+    private int _gainCondition = 1; // 0: Constant Gain, 1: Low, 2: Medium, 3: High2
+    private float _constantGain = 1.0f;
+    private const float GRAB_DETECTION_RADIUS = 0.005f;
     private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 5f;
     private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
+    private const float MIN_FINGERTIP_VELOCITY = 5.0f, MAX_FINGERTIP_VELOCITY = 75f, IDLE_FINGERTIP_VELOCITY = 15f; // velocity is in cm/s
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
-    private const float EURO_MIN_CUTOFF = 1.0f, EURO_BETA = 0.1f, EURO_D_CUTOFF = 1.0f;
-    private const float CLUTCH_DWELL_TIME = 0.1f, CLUTCH_DWELL_ROTATION = 0.1f;
+    private const float EURO_MIN_CUTOFF = 3.0f, EURO_BETA = 0.66f, EURO_D_CUTOFF = 1.0f;
+    private const float CLUTCH_DWELL_TIME = 0.05f, CLUTCH_DWELL_ROTATION = 0.1f;
     private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
     public event Action OnGrab, OnRelease, OnClutchEnd, OnClutchStart;
+
+    // private const string BASE_DIRECTORY_PATH = "D:/Temp/";
+    // private FileStream _fileStream;
+    // private StreamWriter _streamWriter;
+    // private long _timeStamp;
+    // private string _filePath;
+
+    [SerializeField]
+    TextMeshProUGUI _text;
 
     // Start is called before the first frame update
     void Start()
@@ -56,7 +70,7 @@ public class HandInteractor : MonoBehaviour
         // for (int i = 0; i < 6; i++)
         // {
         //     GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        //     sphere.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+        //     sphere.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
         //     sphere.GetComponent<Collider>().isTrigger = true;
         //     _spheres.Add(sphere);
         // }
@@ -74,12 +88,32 @@ public class HandInteractor : MonoBehaviour
         {
             // {KeyCode.P, () => _doProjection = true},
             // {KeyCode.O, () => _doProjection = false}
+            {KeyCode.Keypad0, () => _gainCondition = 0},
+            {KeyCode.Keypad1, () => _gainCondition = 1},
+            {KeyCode.Keypad2, () => _gainCondition = 2},
+            {KeyCode.Keypad3, () => _gainCondition = 3},
+            {KeyCode.KeypadPlus, () => _constantGain += 0.05f},
+            {KeyCode.KeypadMinus, () => _constantGain -= 0.05f}
         };
+
+        // string fileName = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".csv";
+        // try
+        // {
+        //     _fileStream = new FileStream(BASE_DIRECTORY_PATH + fileName, FileMode.Create, FileAccess.Write);
+        //     _streamWriter = new StreamWriter(_fileStream, System.Text.Encoding.UTF8);
+        //     _streamWriter.WriteLine("Timestamp, Thumb, Index, Middle");
+        // }
+        // catch (IOException e)
+        // {
+        //     Debug.LogError("Error: " + e.Message);
+        // }
     }
 
     // Update is called once per frame
     void Update()
     {
+        foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
+
         if (_grabbedObject == null) CheckGrab();
         else CheckRelease();
 
@@ -102,17 +136,18 @@ public class HandInteractor : MonoBehaviour
         _indexTip.position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         _middleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        _triangle.position = GetWeightedTriangleCentroid(_thumbTip.position, _indexTip.position, _middleTip.position);
-
         Pose thumbEuro, indexEuro, middleEuro;
         thumbEuro.position = _oneEuroFiltersVector3[0].Filter(_thumbTip.position, Time.deltaTime);
         indexEuro.position = _oneEuroFiltersVector3[1].Filter(_indexTip.position, Time.deltaTime);
         middleEuro.position = _oneEuroFiltersVector3[2].Filter(_middleTip.position, Time.deltaTime);
 
         Vector3 thumb, index, middle;
-            thumb = thumbEuro.position;
-            index = indexEuro.position;
-            middle = middleEuro.position;
+        thumb = thumbEuro.position;
+        index = indexEuro.position;
+        middle = middleEuro.position;
+        // thumb = _thumbTip.position;
+        // index = _indexTip.position;
+        // middle = _middleTip.position;
 
         // _spheres[0].transform.position = thumb;
         // _spheres[1].transform.position = index;
@@ -122,21 +157,39 @@ public class HandInteractor : MonoBehaviour
         // _spheres[4].transform.position = _indexTip.position;
         // _spheres[5].transform.position = _middleTip.position;
 
+        _triangle.position = GetWeightedTriangleCentroid(thumb, index, middle);
+
         bool isAngleValid, isTriangleValid, isAreaValid;
 
         isAngleValid = CalculateAngleAtVertex(thumb, index, middle, out float triangleP1Angle);
         isTriangleValid = CalculateTriangleOrientationWithOffset(thumb, index, middle, out _triangle.rotation);
         isAreaValid = CalculateTriangleArea(thumb, index, middle, out float triangleArea);
 
-        float fingerTravel = GetFingerTravelDistance();
-        float scaleFactor = GetScaleFactor(fingerTravel);
-        _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, scaleFactor, LERP_SMOOTHING_FACTOR * Time.deltaTime);
-        // _angleScaleFactor = MAX_SCALE_FACTOR;
-        _prevScaleFactor = _angleScaleFactor;
+        if (_gainCondition != 0)
+        {
+            float fingerMaxSpeed = GetMaxFingerSpeed(thumb, index, middle);
+            float gain = _sigmoid.CalculateSigmoid((SigmoidFunction.Preset)_gainCondition, fingerMaxSpeed);
+            _angleScaleFactor = gain;
+            // _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, gain, LERP_SMOOTHING_FACTOR * Time.deltaTime);
+            _prevScaleFactor = _angleScaleFactor;
+            _text.text = $"[{_gainCondition}]{fingerMaxSpeed:F2}, {gain:F2}";
 
-        _prevThumbTip.position = _thumbTip.position;
-        _prevIndexTip.position = _indexTip.position;
-        _prevMiddleTip.position = _middleTip.position;
+        }
+        else
+        {
+            _angleScaleFactor = _constantGain;
+            _text.text = $"[{_gainCondition}]{_constantGain}";
+        }
+
+        // float fingerTravel = GetFingerTravelDistance();
+            // float scaleFactor = GetScaleFactor(fingerTravel);
+            // _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, scaleFactor, LERP_SMOOTHING_FACTOR * Time.deltaTime);
+            // // _angleScaleFactor = MAX_SCALE_FACTOR;
+            // _prevScaleFactor = _angleScaleFactor;
+
+            _prevThumbTip.position = thumb;
+        _prevIndexTip.position = index;
+        _prevMiddleTip.position = middle;
 
         float deltaAngle = 0f;
         Vector3 deltaAxis = Vector3.one;
@@ -168,10 +221,17 @@ public class HandInteractor : MonoBehaviour
             _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
         }
 
-        _objectWorld.position = _wristBone.Transform.TransformPoint(_triangle.position) + _grabOffsetTriangle.position;
+        _objectWorld.position = _wristBone.Transform.TransformPoint(_triangle.position + _grabOffsetTriangle.position);
 
         _rotator.transform.position = _objectWorld.position;
         _rotator.transform.rotation = _objectWorld.rotation;
+    }
+
+    
+    public void OnDestroy()
+    {
+        // _streamWriter.Close();
+        // _fileStream.Close();
     }
 
     private void InitGeometry()
@@ -197,10 +257,6 @@ public class HandInteractor : MonoBehaviour
         _prevIndexTip.position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         _prevMiddleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        _prevThumbProj.position = _prevThumbTip.position;
-        _prevIndexProj.position = _prevIndexTip.position;
-        _prevMiddleProj.position = _prevMiddleTip.position;
-
         _prevObject.rotation = Quaternion.identity;
         _prevScaleFactor = MIN_SCALE_FACTOR;
     }
@@ -217,7 +273,8 @@ public class HandInteractor : MonoBehaviour
         if (_grabbedObject == null) return;
         _grabOffset.position = _wristBone.Transform.InverseTransformPoint(_grabbedObject.transform.position);
         _grabOffset.rotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _grabbedObject.transform.rotation;
-        _grabOffsetTriangle.position = _grabbedObject.transform.position - _wristBone.Transform.TransformPoint(_triangle.position);
+        // _grabOffsetTriangle.position = _grabbedObject.transform.position - _wristBone.Transform.TransformPoint(_triangle.position);
+        _grabOffsetTriangle.position = _grabOffset.position - _triangle.position;
     }
 
     private void CheckGrab()
@@ -284,10 +341,30 @@ public class HandInteractor : MonoBehaviour
         return deltaThumb + deltaIndex + deltaMiddle;
     }
 
+    private float GetMaxFingerSpeed(Vector3 thumb, Vector3 index, Vector3 middle)
+    {
+        // in m
+        float deltaThumb = (thumb - _prevThumbTip.position).magnitude;
+        float deltaIndex = (index - _prevIndexTip.position).magnitude;
+        float deltaMiddle = (middle - _prevMiddleTip.position).magnitude;
+
+        // in m/s
+        float speedThumb = deltaThumb / Time.deltaTime;
+        float speedIndex = deltaIndex / Time.deltaTime;
+        float speedMiddle = deltaMiddle / Time.deltaTime;
+
+        // DateTimeOffset dt = new DateTimeOffset(DateTime.Now);
+        // _timeStamp = dt.ToUnixTimeMilliseconds();
+        // _streamWriter.WriteLine($"{_timeStamp}, {speedThumb:F2}, {speedIndex:F2}, {speedMiddle:F2}");
+
+
+        return Math.Max(speedThumb, Math.Max(speedIndex, speedMiddle));
+    }
+
     public float GetScaleFactor(float distance)
     {
         // init overshoot exception needed
-        
+
         if (distance < MIN_TRAVEL_DISTANCE) return MIN_SCALE_FACTOR;
         else if (distance > MAX_TRAVEL_DISTANCE) return MAX_SCALE_FACTOR;
         else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE) * distance + (MAX_TRAVEL_DISTANCE * MIN_SCALE_FACTOR - MIN_TRAVEL_DISTANCE * MAX_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE);
