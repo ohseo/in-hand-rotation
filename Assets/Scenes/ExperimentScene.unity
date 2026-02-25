@@ -152,7 +152,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isInDebugMode: 0
-  _ovrSkeleton: {fileID: 750940862}
   _interactableLayer:
     serializedVersion: 2
     m_Bits: 8
@@ -5490,7 +5489,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isInDebugMode: 0
-  _ovrSkeleton: {fileID: 643088644}
   _interactableLayer:
     serializedVersion: 2
     m_Bits: 8
@@ -10604,7 +10602,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2137565704}
-  - component: {fileID: 2137565703}
+  - component: {fileID: 2137565705}
   m_Layer: 0
   m_Name: SceneManager
   m_TagString: Untagged
@@ -10612,25 +10610,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2137565703
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2137565702}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 246656b3d1e58ab45b14304d706e4702, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _isLeftHanded: 0
-  _diePrefab: {fileID: 1016349629435091919, guid: e5f635cbb30f1044ca3c8b4c620db24e, type: 3}
-  _targetPrefab: {fileID: 1618645656371774453, guid: 86a01932818dd4045bc2e13c8229874a, type: 3}
-  _handInteractorRight: {fileID: 1104051524}
-  _handInteractorLeft: {fileID: 18630104}
-  _ovrSkeletonRight: {fileID: 643088644}
-  _ovrSkeletonLeft: {fileID: 750940862}
 --- !u!4 &2137565704
 Transform:
   m_ObjectHideFlags: 0
@@ -10646,6 +10625,31 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2137565705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2137565702}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246656b3d1e58ab45b14304d706e4702, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _diePrefab: {fileID: 1016349629435091919, guid: e5f635cbb30f1044ca3c8b4c620db24e, type: 3}
+  _targetPrefab: {fileID: 1618645656371774453, guid: 86a01932818dd4045bc2e13c8229874a, type: 3}
+  _handInteractorRight: {fileID: 1104051524}
+  _handInteractorLeft: {fileID: 18630104}
+  _ovrSkeletonRight: {fileID: 643088644}
+  _ovrSkeletonLeft: {fileID: 750940862}
+  _centerEyeAnchor: {fileID: 2139425078}
+  _text: {fileID: 565504827}
+  _participantNum: 0
+  _isLeftHanded: 0
+  _expType: 2
+  _gainType: 0
+  _methodType: 2
 --- !u!1 &2138209759
 GameObject:
   m_ObjectHideFlags: 0

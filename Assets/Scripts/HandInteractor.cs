@@ -19,7 +19,6 @@ public class HandInteractor : MonoBehaviour
     [SerializeField]
     private bool _isInDebugMode;
     private Dictionary<KeyCode, Action> _keyActions;
-    [SerializeField]
     private OVRSkeleton _ovrSkeleton;
     private OVRBone _indexTipBone, _middleTipBone, _thumbTipBone, _wristBone;
     [SerializeField]
@@ -42,7 +41,7 @@ public class HandInteractor : MonoBehaviour
     private OneEuroFilter<Vector3>[] _oneEuroFiltersVector3;
     private SigmoidFunction _sigmoid = new SigmoidFunction();
 
-    private int _gainCondition = 1; // 0: Constant Gain, 1: Low, 2: Medium, 3: High2
+    private int _gainCondition = 1; // 0: Constant Gain, 1: Low, 2: Medium, 3: High
     private float _constantGain = 1.0f;
     private const float GRAB_DETECTION_RADIUS = 0.005f;
     private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 5f;
@@ -172,13 +171,13 @@ public class HandInteractor : MonoBehaviour
             _angleScaleFactor = gain;
             // _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, gain, LERP_SMOOTHING_FACTOR * Time.deltaTime);
             _prevScaleFactor = _angleScaleFactor;
-            _text.text = $"[{_gainCondition}]{fingerMaxSpeed:F2}, {gain:F2}";
+            // _text.text = $"[{_gainCondition}]{fingerMaxSpeed:F2}, {gain:F2}";
 
         }
         else
         {
             _angleScaleFactor = _constantGain;
-            _text.text = $"[{_gainCondition}]{_constantGain}";
+            // _text.text = $"[{_gainCondition}]{_constantGain}";
         }
 
         // float fingerTravel = GetFingerTravelDistance();
@@ -187,7 +186,7 @@ public class HandInteractor : MonoBehaviour
             // // _angleScaleFactor = MAX_SCALE_FACTOR;
             // _prevScaleFactor = _angleScaleFactor;
 
-            _prevThumbTip.position = thumb;
+        _prevThumbTip.position = thumb;
         _prevIndexTip.position = index;
         _prevMiddleTip.position = middle;
 
@@ -530,6 +529,11 @@ public class HandInteractor : MonoBehaviour
     public void SetOVRSkeleton(OVRSkeleton s)
     {
         _ovrSkeleton = s;
+    }
+
+    public void SetGainCondition(int i)
+    {
+        _gainCondition = i;
     }
 
     public void SetInteractableLayer(LayerMask l)
