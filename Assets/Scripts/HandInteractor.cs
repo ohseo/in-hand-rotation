@@ -180,12 +180,6 @@ public class HandInteractor : MonoBehaviour
             // _text.text = $"[{_gainCondition}]{_constantGain}";
         }
 
-        // float fingerTravel = GetFingerTravelDistance();
-            // float scaleFactor = GetScaleFactor(fingerTravel);
-            // _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, scaleFactor, LERP_SMOOTHING_FACTOR * Time.deltaTime);
-            // // _angleScaleFactor = MAX_SCALE_FACTOR;
-            // _prevScaleFactor = _angleScaleFactor;
-
         _prevThumbTip.position = thumb;
         _prevIndexTip.position = index;
         _prevMiddleTip.position = middle;

@@ -27,7 +27,7 @@ public class ExperimentSceneManager : MonoBehaviour
 
     public enum ExpType { Optimization_Exp1 = 1, Evaluation_Exp2 = 2 }
     public enum GainType { Constant_O = 0, Low_A = 1, Medium_B = 2, High_C = 3 }
-    public enum MethodType { Baseline_0 = 0, Physics_1 = 1, Figeodex_2 = 2 }
+    public enum MethodType { Baseline_B = 0, Physics_P = 1, Figeodex_F = 2 }
 
     [Space]
     [Header("Exp Information")]
@@ -40,13 +40,13 @@ public class ExperimentSceneManager : MonoBehaviour
     [SerializeField]
     private GainType _gainType = GainType.Constant_O;
     [SerializeField]
-    private MethodType _methodType = MethodType.Figeodex_2;
+    private MethodType _methodType = MethodType.Figeodex_F;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
 
     // EXP 1: 3 angles (balanced) * 4 sets * 6 axes (random)
-    private Vector3 INIT_POSITION_EXP1 = new Vector3(0.1f, 1.1f, 0.3f);
+    private Vector3 INIT_POSITION_EXP1 = new Vector3(0.05f, 1f, 0.3f);
     private const int MAX_SET_NUM = 4;
     private List<float> ROTATION_ANGLES = new List<float> { 30f, 90f, 150f };
     private List<Vector3> ROTATION_AXES = new List<Vector3>
@@ -69,7 +69,7 @@ public class ExperimentSceneManager : MonoBehaviour
     private const int MAX_TRIAL_NUM = 3;
     private int _trialNum = 1; // Num starts with 1, Index starts with 0
 
-    private const float POSITION_THRESHOLD = 0.05f, ROTATION_THRESHOLD_DEG = 10f;
+    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration = 0f, _trialDuration = 0f;
     private Pose _targetOffset;
@@ -86,6 +86,8 @@ public class ExperimentSceneManager : MonoBehaviour
 
         _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
         _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
+
+        _conditionText.text = (_expType == ExpType.Optimization_Exp1) ? $"{_gainType}".Split('_')[1] : $"{_methodType}".Split('_')[1];
     }
 
 
@@ -190,7 +192,7 @@ public class ExperimentSceneManager : MonoBehaviour
         GenerateDie();
         GenerateTarget();
         _trialText.text = (_expType == ExpType.Optimization_Exp1) ?
-            $"Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+            $"{ROTATION_ANGLES[_angleIndex]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
     }
 
     private void StartTrial()
