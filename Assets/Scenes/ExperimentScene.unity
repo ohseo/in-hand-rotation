@@ -10639,6 +10639,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _diePrefab: {fileID: 1016349629435091919, guid: e5f635cbb30f1044ca3c8b4c620db24e, type: 3}
   _targetPrefab: {fileID: 1618645656371774453, guid: 86a01932818dd4045bc2e13c8229874a, type: 3}
+  _arrowPrefab: {fileID: 9034380188908188678, guid: 3747f4197f58149518ec66a3a9522e06, type: 3}
   _handInteractorRight: {fileID: 1104051524}
   _handInteractorLeft: {fileID: 18630104}
   _ovrSkeletonRight: {fileID: 643088644}
@@ -10648,7 +10649,7 @@ MonoBehaviour:
   _trialText: {fileID: 565504827}
   _participantNum: 0
   _isLeftHanded: 0
-  _expType: 2
+  _expType: 1
   _gainType: 0
   _methodType: 2
 --- !u!1 &2138209759

@@ -12,6 +12,8 @@ public class ExperimentSceneManager : MonoBehaviour
     [SerializeField]
     private GameObject _targetPrefab;
     [SerializeField]
+    private GameObject _arrowPrefab;
+    [SerializeField]
     private HandInteractor _handInteractorRight, _handInteractorLeft;
     [SerializeField]
     private OVRSkeleton _ovrSkeletonRight, _ovrSkeletonLeft;
@@ -58,6 +60,8 @@ public class ExperimentSceneManager : MonoBehaviour
     };
     private int[] _latinSequence, _randomSequence;
     private int _angleIndex = 0, _setNum = 1, _axisIndex = 0; // Num starts with 1, Index starts with 0
+    private GameObject _arrow1, _arrow2;
+    private Vector3 _arrowScale = new Vector3(0.5f, 0.5f, 5f);
 
     // EXP 2
     private Vector3 INIT_POSITION_EXP2 = new Vector3(0.1f, 1.1f, 0.3f);
@@ -224,6 +228,14 @@ public class ExperimentSceneManager : MonoBehaviour
         _die.transform.position = _isLeftHanded ? position : new Vector3(-position.x, position.y, position.z);
         _die.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
         _die.transform.rotation = Quaternion.identity;
+
+        if (_expType == ExpType.Optimization_Exp1)
+        {
+            Vector3 axis = ROTATION_AXES[_randomSequence[_axisIndex]];
+            DrawAxis(_die, axis);
+            DrawArrow(_die, axis);
+        }
+        else DisableAxis(_die);
     }
 
     private void DestroyDie()
@@ -238,8 +250,9 @@ public class ExperimentSceneManager : MonoBehaviour
         Vector3 axis = (_expType == ExpType.Optimization_Exp1) ? ROTATION_AXES[_randomSequence[_axisIndex]] : UnityEngine.Random.onUnitSphere;
         Vector3 position = (_expType == ExpType.Optimization_Exp1) ? INIT_POSITION_EXP1 : INIT_POSITION_EXP2;
         _target.transform.Rotate(axis.normalized, angle);
-        _target.transform.position = _isLeftHanded ? position : new Vector3(-position.x, position.y, position.z);
+        _target.transform.position = !_isLeftHanded ? position : new Vector3(-position.x, position.y, position.z);
         _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
+        if (_expType == ExpType.Optimization_Exp1) DrawAxis(_target, axis); else DisableAxis(_target);
     }
 
     private void DestroyTarget()
@@ -256,12 +269,41 @@ public class ExperimentSceneManager : MonoBehaviour
         return (pError < POSITION_THRESHOLD) && ((rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG));
     }
 
-    private void DrawAxis(GameObject go)
+    private void DrawAxis(GameObject go, Vector3 axis)
     {
         LineRenderer lr = go.GetComponent<LineRenderer>();
         lr.useWorldSpace = false;
-        lr.SetPosition(0, ROTATION_AXES[_randomSequence[_axisIndex]] * -1f);
-        lr.SetPosition(1, ROTATION_AXES[_randomSequence[_axisIndex]]);
+        lr.SetPosition(0, axis * -1f);
+        lr.SetPosition(1, axis);
+    }
+
+    private void DrawArrow(GameObject parent, Vector3 axis)
+    {
+        _arrow1 = Instantiate(_arrowPrefab, parent.transform, false);
+        _arrow2 = Instantiate(_arrowPrefab, parent.transform, false);
+
+        MeshRenderer mr1 = _arrow1.GetComponent<MeshRenderer>();
+        MeshRenderer mr2 = _arrow2.GetComponent<MeshRenderer>();
+        mr1.material.color = Color.red;
+        mr2.material.color = Color.red;
+
+        Vector3 tangent = Mathf.Abs(Vector3.Dot(axis, Vector3.up)) < 0.9f
+                      ? Vector3.Cross(axis, Vector3.up).normalized
+                      : Vector3.Cross(axis, Vector3.forward).normalized;
+
+        _arrow1.transform.localRotation = Quaternion.LookRotation(Vector3.Cross(tangent, axis), axis);
+        _arrow1.transform.localPosition = Vector3.Cross(tangent, axis);
+        _arrow1.transform.localScale = _arrowScale;
+
+        _arrow2.transform.localRotation = Quaternion.LookRotation(tangent, axis);
+        _arrow2.transform.localPosition = tangent;
+        _arrow2.transform.localScale = _arrowScale;
+    }
+
+    private void DisableAxis(GameObject go)
+    {
+        LineRenderer lr = go.GetComponent<LineRenderer>();
+        lr.enabled = false;
     }
 
     public static int[] GenerateLatinSquareSequence(int n, int pNum)
