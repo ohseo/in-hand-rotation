@@ -18,7 +18,9 @@ public class ExperimentSceneManager : MonoBehaviour
     [SerializeField]
     private GameObject _centerEyeAnchor;
     [SerializeField]
-    private TextMeshProUGUI _text;
+    private TextMeshProUGUI _conditionText;
+    [SerializeField]
+    private TextMeshProUGUI _trialText;
     // Log Manager
 
     public enum ExpType { Optimization_Exp1 = 1, Evaluation_Exp2 = 2 }
@@ -41,7 +43,7 @@ public class ExperimentSceneManager : MonoBehaviour
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
 
-    // EXP 1
+    // EXP 1: 3 angles (balanced) * 4 sets * 6 axes (random)
     private Vector3 INIT_POSITION_EXP1 = new Vector3(0.1f, 1.1f, 0.3f);
     private const int MAX_SET_NUM = 4;
     private List<float> ROTATION_ANGLES = new List<float> { 30f, 90f, 150f };
@@ -77,6 +79,9 @@ public class ExperimentSceneManager : MonoBehaviour
         _handInteractorLeft.SetOVRSkeleton(_ovrSkeletonLeft);
         _handInteractorRight.SetGainCondition((int)_gainType);
         _handInteractorLeft.SetGainCondition((int)_gainType);
+
+        _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
+        _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
     }
 
 
@@ -151,8 +156,14 @@ public class ExperimentSceneManager : MonoBehaviour
                 switch (_expType)
                 {
                     case ExpType.Optimization_Exp1:
-                        // TODO
-                        if (_axisIndex <= ROTATION_AXES.Count) OnTrialLoad?.Invoke();
+                        if (_axisIndex >= ROTATION_AXES.Count)
+                        {
+                            _setNum++;
+                            _axisIndex = 0;
+                            _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
+                        }
+                        if (_setNum > MAX_SET_NUM) { _angleIndex++; _setNum = 1; }
+                        if (_angleIndex < ROTATION_ANGLES.Count) OnTrialLoad?.Invoke();
                         break;
                     case ExpType.Evaluation_Exp2:
                     default:
@@ -172,8 +183,10 @@ public class ExperimentSceneManager : MonoBehaviour
 
     private void LoadNewTrial()
     {
-        GenerateDie(_expType);
-        GenerateTarget(_expType);
+        GenerateDie();
+        GenerateTarget();
+        _trialText.text = (_expType == ExpType.Optimization_Exp1) ?
+            $"Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
     }
 
     private void StartTrial()
@@ -189,13 +202,13 @@ public class ExperimentSceneManager : MonoBehaviour
         DestroyTarget();
         _isOnTarget = false;
         _isInTrial = false;
-        _trialNum++;
+        _ = (_expType == ExpType.Optimization_Exp1) ? _axisIndex++ : _trialNum++;
     }
 
     private void ResetTrial()
     {
         DestroyDie();
-        GenerateDie(_expType);
+        GenerateDie();
         _isOnTarget = false;
     }
 
@@ -204,21 +217,13 @@ public class ExperimentSceneManager : MonoBehaviour
         if (!_isInTrial) OnTrialStart?.Invoke();
     }
 
-    private void GenerateDie(ExpType expType)
+    private void GenerateDie()
     {
-        switch (expType)
-        {
-            case ExpType.Optimization_Exp1:
-                // TODO
-                break;
-            case ExpType.Evaluation_Exp2:
-            default:
-                _die = Instantiate(_diePrefab);
-                _die.transform.position = _isLeftHanded ? INIT_POSITION_EXP2 : new Vector3(-INIT_POSITION_EXP2.x, INIT_POSITION_EXP2.y, INIT_POSITION_EXP2.z);
-                _die.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
-                _die.transform.rotation = Quaternion.identity;
-                break;
-        }
+        _die = Instantiate(_diePrefab);
+        Vector3 position = (_expType == ExpType.Optimization_Exp1) ? INIT_POSITION_EXP1 : INIT_POSITION_EXP2;
+        _die.transform.position = _isLeftHanded ? position : new Vector3(-position.x, position.y, position.z);
+        _die.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
+        _die.transform.rotation = Quaternion.identity;
     }
 
     private void DestroyDie()
@@ -226,22 +231,15 @@ public class ExperimentSceneManager : MonoBehaviour
         Destroy(_die);
     }
 
-    private void GenerateTarget(ExpType expType)
+    private void GenerateTarget()
     {
-        switch (expType)
-        {
-            case ExpType.Optimization_Exp1:
-                // TODO
-                break;
-            case ExpType.Evaluation_Exp2:
-            default:
-                _target = Instantiate(_targetPrefab);
-                Vector3 axis = UnityEngine.Random.onUnitSphere;
-                _target.transform.Rotate(axis.normalized, INIT_ROTATION_DEG);
-                _target.transform.position = _isLeftHanded ? new Vector3(-INIT_POSITION_EXP2.x, INIT_POSITION_EXP2.y, INIT_POSITION_EXP2.z) : INIT_POSITION_EXP2;
-                _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
-                break;
-        }
+        _target = Instantiate(_targetPrefab);
+        float angle = (_expType == ExpType.Optimization_Exp1) ? ROTATION_ANGLES[_latinSequence[_angleIndex]] : INIT_ROTATION_DEG;
+        Vector3 axis = (_expType == ExpType.Optimization_Exp1) ? ROTATION_AXES[_randomSequence[_axisIndex]] : UnityEngine.Random.onUnitSphere;
+        Vector3 position = (_expType == ExpType.Optimization_Exp1) ? INIT_POSITION_EXP1 : INIT_POSITION_EXP2;
+        _target.transform.Rotate(axis.normalized, angle);
+        _target.transform.position = _isLeftHanded ? position : new Vector3(-position.x, position.y, position.z);
+        _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
     }
 
     private void DestroyTarget()
@@ -258,10 +256,18 @@ public class ExperimentSceneManager : MonoBehaviour
         return (pError < POSITION_THRESHOLD) && ((rError < ROTATION_THRESHOLD_DEG) || (rError > 360f - ROTATION_THRESHOLD_DEG));
     }
 
-    public static int[] GenerateLatinSquareSequence(int n, int participantIndex)
+    private void DrawAxis(GameObject go)
+    {
+        LineRenderer lr = go.GetComponent<LineRenderer>();
+        lr.useWorldSpace = false;
+        lr.SetPosition(0, ROTATION_AXES[_randomSequence[_axisIndex]] * -1f);
+        lr.SetPosition(1, ROTATION_AXES[_randomSequence[_axisIndex]]);
+    }
+
+    public static int[] GenerateLatinSquareSequence(int n, int pNum)
     {
         // Since participant num starts with 1
-        participantIndex--;
+        int participantIndex = pNum--;
         if (participantIndex < 0) participantIndex++;
 
         int totalRows = (n % 2 == 0) ? n : n * 2;

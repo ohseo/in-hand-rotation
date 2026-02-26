@@ -10644,7 +10644,8 @@ MonoBehaviour:
   _ovrSkeletonRight: {fileID: 643088644}
   _ovrSkeletonLeft: {fileID: 750940862}
   _centerEyeAnchor: {fileID: 2139425078}
-  _text: {fileID: 565504827}
+  _conditionText: {fileID: 740122283}
+  _trialText: {fileID: 565504827}
   _participantNum: 0
   _isLeftHanded: 0
   _expType: 2
