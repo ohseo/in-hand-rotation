@@ -23,7 +23,8 @@ public class ExperimentSceneManager : MonoBehaviour
     private TextMeshProUGUI _conditionText;
     [SerializeField]
     private TextMeshProUGUI _trialText;
-    // Log Manager
+    [SerializeField]
+    private ExperimentLogManager _logManager;
 
     public enum ExpType { Optimization_Exp1 = 1, Evaluation_Exp2 = 2 }
     public enum GainType { Constant_O = 0, Low_A = 1, Medium_B = 2, High_C = 3 }
@@ -41,6 +42,8 @@ public class ExperimentSceneManager : MonoBehaviour
     private GainType _gainType = GainType.Constant_O;
     [SerializeField]
     private MethodType _methodType = MethodType.Figeodex_F;
+    [SerializeField]
+    private bool _isPracticeMode = false;
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
@@ -66,13 +69,13 @@ public class ExperimentSceneManager : MonoBehaviour
     // EXP 2
     private Vector3 INIT_POSITION_EXP2 = new Vector3(0.05f, 1f, 0.3f);
     private const float INIT_ROTATION_DEG = 135f;
+    private Vector3 _randomAxis;
     private const int MAX_TRIAL_NUM = 3;
     private int _trialNum = 1; // Num starts with 1, Index starts with 0
 
     private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration = 0f, _trialDuration = 0f;
-    private Pose _targetOffset;
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
 
     public event Action OnTrialLoad, OnTrialStart, OnTrialEnd, OnTrialReset, OnTarget, OffTarget, OnTimeout;
@@ -107,6 +110,17 @@ public class ExperimentSceneManager : MonoBehaviour
 
         OnTimeout += TimeOut;
 
+        if (!_isPracticeMode)
+        {
+            OnTrialLoad += () => _logManager.OnEvent("Trial Load");
+            OnTrialStart += () => _logManager.OnEvent("Trial Start");
+            OnTrialEnd += () => _logManager.OnEvent("Trial End");
+            OnTrialReset += () => _logManager.OnEvent("Trial Reset");
+            OnTarget += () => _logManager.OnEvent("On Target");
+            OffTarget += () => _logManager.OnEvent("Off Target");
+            OnTimeout += () => _logManager.OnEvent("Timeout");
+        }
+
         _handInteractorLeft.OnGrab += _handInteractorLeft.GrabObject;
         _handInteractorLeft.OnGrab += OnGrab;
         _handInteractorRight.OnGrab += _handInteractorRight.GrabObject;
@@ -121,13 +135,24 @@ public class ExperimentSceneManager : MonoBehaviour
         _handInteractorLeft.OnClutchStart += _handInteractorLeft.StartClutching;
         _handInteractorRight.OnClutchStart += _handInteractorRight.StartClutching;
 
+        if (!_isPracticeMode)
+        {
+            HandInteractor active = ActiveHand;
+            active.OnGrab += () => _logManager.OnEvent("Grab");
+            active.OnRelease += () => _logManager.OnEvent("Release");
+            active.OnClutchStart += () => _logManager.OnEvent("Clutch Start");
+            active.OnClutchEnd += () => _logManager.OnEvent("Clutch End");
+        }
+
         OnTarget += _handInteractorLeft.OnTarget;
         OnTarget += _handInteractorRight.OnTarget;
 
         OffTarget += _handInteractorLeft.OffTarget;
         OffTarget += _handInteractorRight.OffTarget;
 
-        OnTrialLoad?.Invoke();        
+        if (!_isPracticeMode) _logManager.Initialize();
+
+        OnTrialLoad?.Invoke();
     }
 
     // Update is called once per frame
@@ -155,7 +180,9 @@ public class ExperimentSceneManager : MonoBehaviour
         }
 
         if (!_isInTrial) return;
-        
+
+        if (!_isPracticeMode) _logManager.WriteStreamRow();
+
         bool isErrorSmall = CalculateError(out Pose offset);
         if (isErrorSmall && !_isOnTarget)
         {
@@ -182,6 +209,7 @@ public class ExperimentSceneManager : MonoBehaviour
 
     void OnDestroy()
     {
+        if (!_isPracticeMode) _logManager.CloseAll();
         DestroyDie();
         DestroyTarget();
     }
@@ -282,6 +310,7 @@ public class ExperimentSceneManager : MonoBehaviour
         _target.transform.position = !_isLeftHanded ? position : new Vector3(-position.x, position.y, position.z);
         _target.transform.localScale = new Vector3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE);
         if (_expType == ExpType.Optimization_Exp1) DrawAxis(_target, axis); else DisableAxis(_target);
+        if (_expType == ExpType.Evaluation_Exp2) _randomAxis = axis;
     }
 
     private void DestroyTarget()
@@ -380,6 +409,47 @@ public class ExperimentSceneManager : MonoBehaviour
         }
 
         return row;
+    }
+
+    // Public read-only properties for logging
+    public int ParticipantNum => _participantNum;
+    public bool IsLeftHanded => _isLeftHanded;
+    public ExpType Experiment => _expType;
+    public GainType Gain => _gainType;
+    public MethodType Method => _methodType;
+    public bool IsPracticeMode => _isPracticeMode;
+    public bool IsInTrial => _isInTrial;
+    public bool IsOnTarget => _isOnTarget;
+    public bool IsTimeout => _isTimeout;
+    public float TrialDuration => _trialDuration;
+    public float DwellDuration => _dwellDuration;
+    public int AngleIndex => _angleIndex;
+    public int SetNum => _setNum;
+    public int AxisIndex => _axisIndex;
+    public int TrialNum => _trialNum;
+
+    public float CurrentAngle => (_expType == ExpType.Optimization_Exp1 && _angleIndex < ROTATION_ANGLES.Count)
+        ? ROTATION_ANGLES[_latinSequence[_angleIndex]] : INIT_ROTATION_DEG;
+    public Vector3 CurrentAxis => (_expType == ExpType.Optimization_Exp1 && _axisIndex < ROTATION_AXES.Count)
+        ? ROTATION_AXES[_randomSequence[_axisIndex]] : _randomAxis;
+
+    public Transform DieTransform => _die != null ? _die.transform : null;
+    public Transform TargetTransform => _target != null ? _target.transform : null;
+    public Vector3 HeadPosition => _centerEyeAnchor.transform.position;
+    public Quaternion HeadRotation => _centerEyeAnchor.transform.rotation;
+
+    public HandInteractor ActiveHand => _isLeftHanded ? _handInteractorLeft : _handInteractorRight;
+    public HandInteractor LeftHand => _handInteractorLeft;
+    public HandInteractor RightHand => _handInteractorRight;
+
+    public Pose TargetOffset
+    {
+        get
+        {
+            if (_die == null || _target == null) return new Pose(Vector3.zero, Quaternion.identity);
+            CalculateError(out Pose delta);
+            return delta;
+        }
     }
 
     public static int[] GenerateRandomSequence(int n)

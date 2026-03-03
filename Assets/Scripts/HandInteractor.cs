@@ -32,12 +32,13 @@ public class HandInteractor : MonoBehaviour
     private Pose _wristWorld, _thumbTipWorld, _indexTipWorld, _middleTipWorld;
     private Pose _thumbTip, _indexTip, _middleTip;
     private Pose _prevThumbTip, _prevIndexTip, _prevMiddleTip;
+    private Pose _thumbTipEuro, _indexTipEuro, _middleTipEuro;
     private Pose _triangle, _prevTriangle;
     private Pose _prevObject, _object, _objectWorld;
     private Pose _grabOffset, _grabOffsetTriangle;
-    private float _angleScaleFactor = 1f, _prevScaleFactor;
+    private float _angleScaleFactor = 1f;
     private float _clutchDwellDuration = 0f;
-    private bool _isDwelled = false, _isRotating = true;
+    private bool _isDwelled = false, _isRotating = true, _isClutching = false;
     private OneEuroFilter<Vector3>[] _oneEuroFiltersVector3;
     private SigmoidFunction _sigmoid = new SigmoidFunction();
 
@@ -46,7 +47,6 @@ public class HandInteractor : MonoBehaviour
     private const float GRAB_DETECTION_RADIUS = 0.005f;
     private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 5f;
     private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
-    private const float MIN_FINGERTIP_VELOCITY = 5.0f, MAX_FINGERTIP_VELOCITY = 75f, IDLE_FINGERTIP_VELOCITY = 15f; // velocity is in cm/s
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
     private const float EURO_MIN_CUTOFF = 3.0f, EURO_BETA = 0.66f, EURO_D_CUTOFF = 1.0f;
     private const float CLUTCH_DWELL_TIME = 0.05f, CLUTCH_DWELL_ROTATION = 0.1f;
@@ -137,15 +137,14 @@ public class HandInteractor : MonoBehaviour
         _indexTip.position = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
         _middleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
-        Pose thumbEuro, indexEuro, middleEuro;
-        thumbEuro.position = _oneEuroFiltersVector3[0].Filter(_thumbTip.position, Time.deltaTime);
-        indexEuro.position = _oneEuroFiltersVector3[1].Filter(_indexTip.position, Time.deltaTime);
-        middleEuro.position = _oneEuroFiltersVector3[2].Filter(_middleTip.position, Time.deltaTime);
+        _thumbTipEuro.position = _oneEuroFiltersVector3[0].Filter(_thumbTip.position, Time.deltaTime);
+        _indexTipEuro.position = _oneEuroFiltersVector3[1].Filter(_indexTip.position, Time.deltaTime);
+        _middleTipEuro.position = _oneEuroFiltersVector3[2].Filter(_middleTip.position, Time.deltaTime);
 
         Vector3 thumb, index, middle;
-        thumb = thumbEuro.position;
-        index = indexEuro.position;
-        middle = middleEuro.position;
+        thumb = _thumbTipEuro.position;
+        index = _indexTipEuro.position;
+        middle = _middleTipEuro.position;
         // thumb = _thumbTip.position;
         // index = _indexTip.position;
         // middle = _middleTip.position;
@@ -172,7 +171,6 @@ public class HandInteractor : MonoBehaviour
             float gain = _sigmoid.CalculateSigmoid((SigmoidFunction.Preset)_gainCondition, fingerMaxSpeed);
             _angleScaleFactor = gain;
             // _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, gain, LERP_SMOOTHING_FACTOR * Time.deltaTime);
-            _prevScaleFactor = _angleScaleFactor;
             // _text.text = $"[{_gainCondition}]{fingerMaxSpeed:F2}, {gain:F2}";
 
         }
@@ -253,7 +251,6 @@ public class HandInteractor : MonoBehaviour
         _prevMiddleTip.position = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
 
         _prevObject.rotation = Quaternion.identity;
-        _prevScaleFactor = MIN_SCALE_FACTOR;
     }
 
     private void ResetOffset()
@@ -483,6 +480,7 @@ public class HandInteractor : MonoBehaviour
         ResetGeometry();
         GetOffset();
         _isRotating = false;
+        _isClutching = true;
         if (_grabbedObject != null)
         {
             _grabbedObject.SetOutlineWidth(OUTLINE_WIDTH_CLUTCHING);
@@ -492,6 +490,7 @@ public class HandInteractor : MonoBehaviour
     public void EndClutching()
     {
         _isRotating = true;
+        _isClutching = false;
         if (_grabbedObject != null)
         {
             _grabbedObject.SetOutlineWidth(OUTLINE_WIDTH_DEFAULT);
@@ -536,4 +535,25 @@ public class HandInteractor : MonoBehaviour
     {
         _interactableLayer = l;
     }
+
+    // Public read-only properties for logging
+    public Vector3 WristWorldPosition => _wristWorld.position;
+    public Quaternion WristWorldRotation => _wristWorld.rotation;
+    public Vector3 ThumbTipWorldPosition => _thumbTipWorld.position;
+    public Vector3 IndexTipWorldPosition => _indexTipWorld.position;
+    public Vector3 MiddleTipWorldPosition => _middleTipWorld.position;
+    public Vector3 ThumbTipLocalPosition => _thumbTip.position;
+    public Vector3 IndexTipLocalPosition => _indexTip.position;
+    public Vector3 MiddleTipLocalPosition => _middleTip.position;
+    public Vector3 TriangleCentroidPosition => _triangle.position;
+    public Quaternion TriangleRotation => _triangle.rotation;
+    public Pose ObjectWorldPose => _objectWorld;
+    public float AngleScaleFactor => _angleScaleFactor;
+    public bool IsRotating => _isRotating;
+    public bool IsGrabbed => _grabbedObject != null;
+    public int GainCondition => _gainCondition;
+    public Vector3 ThumbTipEuroPosition => _thumbTipEuro.position;
+    public Vector3 IndexTipEuroPosition => _indexTipEuro.position;
+    public Vector3 MiddleTipEuroPosition => _middleTipEuro.position;
+    public bool IsClutching => _isClutching;
 }
