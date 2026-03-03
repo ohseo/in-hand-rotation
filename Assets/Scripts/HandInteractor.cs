@@ -61,7 +61,7 @@ public class HandInteractor : MonoBehaviour
     // private string _filePath;
 
     [SerializeField]
-    TextMeshProUGUI _text;
+    private TextMeshProUGUI _debugText;
 
     // Start is called before the first frame update
     void Start()
@@ -111,6 +111,8 @@ public class HandInteractor : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        _debugText.text = $"{_gainCondition}\t{_angleScaleFactor}";
+
         foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
 
         if (_grabbedObject == null) CheckGrab();

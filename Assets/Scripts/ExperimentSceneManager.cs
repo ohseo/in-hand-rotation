@@ -48,7 +48,7 @@ public class ExperimentSceneManager : MonoBehaviour
     // EXP 1: 3 angles (balanced) * 4 sets * 6 axes (random)
     private Vector3 INIT_POSITION_EXP1 = new Vector3(0.05f, 1f, 0.3f);
     private const int MAX_SET_NUM = 4;
-    private List<float> ROTATION_ANGLES = new List<float> { 30f, 90f, 150f };
+    private List<float> ROTATION_ANGLES = new List<float> { 30f, 120f, 210f };
     private List<Vector3> ROTATION_AXES = new List<Vector3>
     {
         new Vector3(1f, 0f, 0f),
@@ -64,7 +64,7 @@ public class ExperimentSceneManager : MonoBehaviour
     private Vector3 _arrowScale = new Vector3(0.5f, 0.5f, 5f);
 
     // EXP 2
-    private Vector3 INIT_POSITION_EXP2 = new Vector3(0.1f, 1.1f, 0.3f);
+    private Vector3 INIT_POSITION_EXP2 = new Vector3(0.05f, 1f, 0.3f);
     private const float INIT_ROTATION_DEG = 135f;
     private const int MAX_TRIAL_NUM = 3;
     private int _trialNum = 1; // Num starts with 1, Index starts with 0
@@ -75,7 +75,7 @@ public class ExperimentSceneManager : MonoBehaviour
     private Pose _targetOffset;
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
 
-    public event Action OnTrialLoad, OnTrialStart, OnTrialEnd, OnTrialReset, OnTarget, OffTarget;
+    public event Action OnTrialLoad, OnTrialStart, OnTrialEnd, OnTrialReset, OnTarget, OffTarget, OnTimeout;
 
     void Awake()
     {
@@ -105,6 +105,8 @@ public class ExperimentSceneManager : MonoBehaviour
         OnTrialReset += _handInteractorLeft.Reset;
         OnTrialReset += _handInteractorRight.Reset;
 
+        OnTimeout += TimeOut;
+
         _handInteractorLeft.OnGrab += _handInteractorLeft.GrabObject;
         _handInteractorLeft.OnGrab += OnGrab;
         _handInteractorRight.OnGrab += _handInteractorRight.GrabObject;
@@ -131,15 +133,29 @@ public class ExperimentSceneManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKey(KeyCode.KeypadEnter))
+        {
+            if ((_expType == ExpType.Optimization_Exp1) && (_angleIndex < ROTATION_ANGLES.Count) && (_die == null))
+            {
+                OnTrialLoad?.Invoke();
+                return;
+            }
+        }
         if (Input.GetKey(KeyCode.Return))
         {
             OnTrialReset?.Invoke();
             return;
         }
 
-        if (!_isInTrial) return;
         _trialDuration += Time.deltaTime;
+        if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
+        {
+            OnTimeout?.Invoke();
+            CheckNextTrial();
+        }
 
+        if (!_isInTrial) return;
+        
         bool isErrorSmall = CalculateError(out Pose offset);
         if (isErrorSmall && !_isOnTarget)
         {
@@ -159,24 +175,7 @@ public class ExperimentSceneManager : MonoBehaviour
             if (_dwellDuration > DWELL_THRESHOLD)
             {
                 OnTrialEnd?.Invoke();
-                switch (_expType)
-                {
-                    case ExpType.Optimization_Exp1:
-                        if (_axisIndex >= ROTATION_AXES.Count)
-                        {
-                            _setNum++;
-                            _axisIndex = 0;
-                            _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
-                        }
-                        if (_setNum > MAX_SET_NUM) { _angleIndex++; _setNum = 1; }
-                        if (_angleIndex < ROTATION_ANGLES.Count) OnTrialLoad?.Invoke();
-                        break;
-                    case ExpType.Evaluation_Exp2:
-                    default:
-                        if (_trialNum <= MAX_TRIAL_NUM) OnTrialLoad?.Invoke();
-                        break;
-                }
-                
+                CheckNextTrial();                
             }
         }
     }
@@ -192,7 +191,7 @@ public class ExperimentSceneManager : MonoBehaviour
         GenerateDie();
         GenerateTarget();
         _trialText.text = (_expType == ExpType.Optimization_Exp1) ?
-            $"{ROTATION_ANGLES[_angleIndex]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+            $"{ROTATION_ANGLES[_latinSequence[_angleIndex]]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
     }
 
     private void StartTrial()
@@ -216,6 +215,34 @@ public class ExperimentSceneManager : MonoBehaviour
         DestroyDie();
         GenerateDie();
         _isOnTarget = false;
+    }
+
+    private void CheckNextTrial()
+    {
+        switch (_expType)
+        {
+            case ExpType.Optimization_Exp1:
+                if (_axisIndex >= ROTATION_AXES.Count)
+                {
+                    _setNum++;
+                    _axisIndex = 0;
+                    _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
+                }
+                if (_setNum > MAX_SET_NUM) { _angleIndex++; _setNum = 1; }
+                else OnTrialLoad?.Invoke();
+                if (_angleIndex >= ROTATION_ANGLES.Count) Application.Quit();
+                break;
+            case ExpType.Evaluation_Exp2:
+            default:
+                if (_trialNum <= MAX_TRIAL_NUM) OnTrialLoad?.Invoke();
+                break;
+        }
+    }
+
+    private void TimeOut()
+    {
+        _isTimeout = true;
+        OnTrialEnd?.Invoke();
     }
 
     private void OnGrab()
