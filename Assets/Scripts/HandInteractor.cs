@@ -46,9 +46,9 @@ public class HandInteractor : MonoBehaviour
     private int _gainCondition = 1; // 0: Constant Gain, 1: Low, 2: Medium, 3: High
     private float _constantGain = 1.0f;
     private const float GRAB_DETECTION_RADIUS = 0.005f;
-    private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
+    private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 10f;
     private const float EURO_MIN_CUTOFF = 3.0f, EURO_BETA = 0.66f, EURO_D_CUTOFF = 1.0f;
-    private const float CLUTCH_DWELL_TIME = 0.05f, CLUTCH_DWELL_ROTATION = 0.1f;
+    private const float CLUTCH_DWELL_TIME = 0.1f, CLUTCH_DWELL_ROTATION = 0.1f;
     private const float MIN_FINGER_SPEED = 0.013f; // m/s
     private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
@@ -204,9 +204,9 @@ public class HandInteractor : MonoBehaviour
 
         if (_isRotating)
         {
-            // float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
-            // Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
-            Quaternion deltaScaledRoation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
+            float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
+            Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
+            // Quaternion deltaScaledRoation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
             _object.rotation = deltaScaledRoation * _prevObject.rotation;
             _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
             _prevObject.rotation = _object.rotation;
