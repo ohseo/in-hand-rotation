@@ -50,7 +50,7 @@ public class ExperimentSceneManager : MonoBehaviour
 
     // EXP 1: 3 angles (balanced) * 4 sets * 6 axes (random)
     private Vector3 INIT_POSITION_EXP1 = new Vector3(0.05f, 1f, 0.3f);
-    private const int MAX_SET_NUM = 3;
+    private const int MAX_SET_NUM = 4;
     private List<float> ROTATION_ANGLES = new List<float> { 30f, 120f, 210f };
     private List<Vector3> ROTATION_AXES = new List<Vector3>
     {

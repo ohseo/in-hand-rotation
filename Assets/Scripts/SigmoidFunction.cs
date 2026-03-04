@@ -21,7 +21,7 @@ public class SigmoidFunction
     // private static readonly Settings HighSettings = new Settings(0.3f, 2.45f, 21.2f);
 
     private static readonly Settings LowSettings = new Settings(0.3f, 1.3f, 49.9102f);
-    private static readonly Settings MediumSettings = new Settings(0.3f, 1.7f, 36.0201f);
+    private static readonly Settings MediumSettings = new Settings(0.3f, 1.875f, 32.3620f);
     private static readonly Settings HighSettings = new Settings(0.3f, 2.45f, 24.0817f);
     private readonly float vMin = 0.013f, vMax = 0.42f, vIdle = 0.074f; // vMin, vMax are not used
 
