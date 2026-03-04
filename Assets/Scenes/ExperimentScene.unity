@@ -10969,7 +10969,7 @@ MonoBehaviour:
   _expType: 2
   _gainType: 0
   _methodType: 2
-  _isPracticeMode: 0
+  _isPracticeMode: 1
 --- !u!1 &2138209759
 GameObject:
   m_ObjectHideFlags: 0

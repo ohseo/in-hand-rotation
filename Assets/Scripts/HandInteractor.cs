@@ -36,6 +36,7 @@ public class HandInteractor : MonoBehaviour
     private Pose _triangle, _prevTriangle;
     private Pose _prevObject, _object, _objectWorld, _objectLocal;
     private Pose _grabOffset, _grabOffsetTriangle;
+    private float _fingerMaxSpeed;
     private float _angleScaleFactor = 1f;
     private float _clutchDwellDuration = 0f;
     private bool _isDwelled = false, _isRotating = true, _isClutching = false;
@@ -45,11 +46,10 @@ public class HandInteractor : MonoBehaviour
     private int _gainCondition = 1; // 0: Constant Gain, 1: Low, 2: Medium, 3: High
     private float _constantGain = 1.0f;
     private const float GRAB_DETECTION_RADIUS = 0.005f;
-    private const float MIN_SCALE_FACTOR = 0.1f, MAX_SCALE_FACTOR = 5f;
-    private const float MIN_TRAVEL_DISTANCE = 0.02f, MAX_TRAVEL_DISTANCE = 1f; // distance is in cm
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
     private const float EURO_MIN_CUTOFF = 3.0f, EURO_BETA = 0.66f, EURO_D_CUTOFF = 1.0f;
     private const float CLUTCH_DWELL_TIME = 0.05f, CLUTCH_DWELL_ROTATION = 0.1f;
+    private const float MIN_FINGER_SPEED = 0.013f; // m/s
     private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
 
     public event Action OnGrab, OnRelease, OnClutchEnd, OnClutchStart;
@@ -165,11 +165,11 @@ public class HandInteractor : MonoBehaviour
         isAngleValid = CalculateAngleAtVertex(thumb, index, middle, out float triangleP1Angle);
         isTriangleValid = CalculateTriangleOrientationWithOffset(thumb, index, middle, out _triangle.rotation);
         isAreaValid = CalculateTriangleArea(thumb, index, middle, out float triangleArea);
+        _fingerMaxSpeed = GetMaxFingerSpeed(thumb, index, middle);
 
         if (_gainCondition != 0)
         {
-            float fingerMaxSpeed = GetMaxFingerSpeed(thumb, index, middle);
-            float gain = _sigmoid.CalculateSigmoid((SigmoidFunction.Preset)_gainCondition, fingerMaxSpeed);
+            float gain = _sigmoid.CalculateSigmoid((SigmoidFunction.Preset)_gainCondition, _fingerMaxSpeed);
             _angleScaleFactor = gain;
             // _angleScaleFactor = Mathf.Lerp(_prevScaleFactor, gain, LERP_SMOOTHING_FACTOR * Time.deltaTime);
             // _text.text = $"[{_gainCondition}]{fingerMaxSpeed:F2}, {gain:F2}";
@@ -199,12 +199,14 @@ public class HandInteractor : MonoBehaviour
         // skip from here if no object is grabbed
         if (_grabbedObject == null) return;
 
-        if (deltaAngle < CLUTCH_DWELL_ROTATION) _clutchDwellDuration += Time.deltaTime;
+        // if (deltaAngle < CLUTCH_DWELL_ROTATION) _clutchDwellDuration += Time.deltaTime;
+        if (_fingerMaxSpeed < MIN_FINGER_SPEED) _clutchDwellDuration += Time.deltaTime;
 
         if (_isRotating)
         {
-            float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
-            Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
+            // float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
+            // Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
+            Quaternion deltaScaledRoation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
             _object.rotation = deltaScaledRoation * _prevObject.rotation;
             _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
             _prevObject.rotation = _object.rotation;
@@ -352,15 +354,6 @@ public class HandInteractor : MonoBehaviour
 
 
         return Math.Max(speedThumb, Math.Max(speedIndex, speedMiddle));
-    }
-
-    public float GetScaleFactor(float distance)
-    {
-        // init overshoot exception needed
-
-        if (distance < MIN_TRAVEL_DISTANCE) return MIN_SCALE_FACTOR;
-        else if (distance > MAX_TRAVEL_DISTANCE) return MAX_SCALE_FACTOR;
-        else return (MAX_SCALE_FACTOR - MIN_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE) * distance + (MAX_TRAVEL_DISTANCE * MIN_SCALE_FACTOR - MIN_TRAVEL_DISTANCE * MAX_SCALE_FACTOR) / (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE);
     }
 
     public Vector3 GetTriangleCentroid(Vector3 p1, Vector3 p2, Vector3 p3)

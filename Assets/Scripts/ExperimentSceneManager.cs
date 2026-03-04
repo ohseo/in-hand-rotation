@@ -70,7 +70,7 @@ public class ExperimentSceneManager : MonoBehaviour
     private Vector3 INIT_POSITION_EXP2 = new Vector3(0.05f, 1f, 0.3f);
     private const float INIT_ROTATION_DEG = 135f;
     private Vector3 _randomAxis;
-    private const int MAX_TRIAL_NUM = 3;
+    private const int MAX_TRIAL_NUM = 40;
     private int _trialNum = 1; // Num starts with 1, Index starts with 0
 
     private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 5f;
