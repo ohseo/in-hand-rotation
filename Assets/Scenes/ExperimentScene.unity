@@ -10968,7 +10968,7 @@ MonoBehaviour:
   _isLeftHanded: 0
   _expType: 1
   _gainType: 0
-  _isPracticeMode: 1
+  _isPracticeMode: 0
 --- !u!1 &2138209759
 GameObject:
   m_ObjectHideFlags: 0

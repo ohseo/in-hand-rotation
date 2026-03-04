@@ -12,6 +12,7 @@ public class ExperimentLogManager : MonoBehaviour
     private CsvLog _summaryLog = new CsvLog();
 
     private string _basePath;
+    private string _conditionsSuffix;
     private long _timestamp;
     private string _eventName;
     private int _eventHandIndex = -1; // -1: N/A, 0: Right, 1: Left
@@ -36,6 +37,7 @@ public class ExperimentLogManager : MonoBehaviour
             ? $"_{_sm.Experiment}_P{_sm.ParticipantNum}_{_sm.Gain}"
             : $"_{_sm.Experiment}_P{_sm.ParticipantNum}_{_sm.Method}";
         _basePath = BASE_DIRECTORY_PATH + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + conditions;
+        _conditionsSuffix = conditions;
 
         RegisterStreamColumns();
         RegisterEventColumns();
@@ -185,7 +187,8 @@ public class ExperimentLogManager : MonoBehaviour
             string suffix = (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
                 ? $"_Set{_sm.SetNum}_Angle{_sm.CurrentAngle}_Axis{_sm.AxisIndex}"
                 : $"_Trial{_sm.TrialNum}";
-            _streamLog.Open(_basePath + suffix + "_StreamData.csv");
+            string streamPath = BASE_DIRECTORY_PATH + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + _conditionsSuffix + suffix;
+            _streamLog.Open(streamPath + "_StreamData.csv");
         }
         else if (eventName == "Trial Start")
         {

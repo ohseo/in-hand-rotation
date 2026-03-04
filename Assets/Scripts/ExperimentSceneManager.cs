@@ -73,7 +73,7 @@ public class ExperimentSceneManager : MonoBehaviour
     private const int MAX_TRIAL_NUM = 40;
     private int _trialNum = 1; // Num starts with 1, Index starts with 0
 
-    private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 5f;
+    private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 10f;
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration = 0f, _trialDuration = 0f;
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
@@ -88,7 +88,7 @@ public class ExperimentSceneManager : MonoBehaviour
             _handInteractors[i].SetGainCondition((int)_gainType);
         }
 
-        _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
+        // _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
         _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
 
         _conditionText.text = (_expType == ExpType.Optimization_Exp1) ? $"{_gainType}".Split('_')[1] : $"{_methodType}".Split('_')[1];
@@ -161,7 +161,7 @@ public class ExperimentSceneManager : MonoBehaviour
         }
 
         _trialDuration += Time.deltaTime;
-        if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD)
+        if (_isInTrial && _trialDuration > TIMEOUT_THRESHOLD && !_isPracticeMode)
         {
             OnTimeout?.Invoke();
             CheckNextTrial();
@@ -207,7 +207,8 @@ public class ExperimentSceneManager : MonoBehaviour
         GenerateDie();
         GenerateTarget();
         _trialText.text = (_expType == ExpType.Optimization_Exp1) ?
-            $"{ROTATION_ANGLES[_latinSequence[_angleIndex]]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+            // $"{ROTATION_ANGLES[_latinSequence[_angleIndex]]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+            $"{ROTATION_ANGLES[_angleIndex]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
     }
 
     private void StartTrial()
@@ -290,8 +291,10 @@ public class ExperimentSceneManager : MonoBehaviour
 
     private void GenerateTarget()
     {
+        if (_isPracticeMode) _angleIndex = 1;
         _target = Instantiate(_targetPrefab);
-        float angle = (_expType == ExpType.Optimization_Exp1) ? ROTATION_ANGLES[_latinSequence[_angleIndex]] : INIT_ROTATION_DEG;
+        // float angle = (_expType == ExpType.Optimization_Exp1) ? ROTATION_ANGLES[_latinSequence[_angleIndex]] : INIT_ROTATION_DEG;
+        float angle = (_expType == ExpType.Optimization_Exp1) ? ROTATION_ANGLES[_angleIndex] : INIT_ROTATION_DEG;
         Vector3 axis = (_expType == ExpType.Optimization_Exp1) ? ROTATION_AXES[_randomSequence[_axisIndex]] : UnityEngine.Random.onUnitSphere;
         Vector3 position = (_expType == ExpType.Optimization_Exp1) ? INIT_POSITION_EXP1 : INIT_POSITION_EXP2;
         _target.transform.Rotate(axis.normalized, angle);
@@ -417,7 +420,8 @@ public class ExperimentSceneManager : MonoBehaviour
     public int TrialNum => _trialNum;
 
     public float CurrentAngle => (_expType == ExpType.Optimization_Exp1 && _angleIndex < ROTATION_ANGLES.Count)
-        ? ROTATION_ANGLES[_latinSequence[_angleIndex]] : INIT_ROTATION_DEG;
+        // ? ROTATION_ANGLES[_latinSequence[_angleIndex]] : INIT_ROTATION_DEG;
+        ? ROTATION_ANGLES[_angleIndex] : INIT_ROTATION_DEG;
     public Vector3 CurrentAxis => (_expType == ExpType.Optimization_Exp1 && _axisIndex < ROTATION_AXES.Count)
         ? ROTATION_AXES[_randomSequence[_axisIndex]] : _randomAxis;
 
