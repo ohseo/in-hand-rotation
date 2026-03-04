@@ -108,7 +108,6 @@ public class ExperimentLogManager : MonoBehaviour
 
         // Gain
         _streamLog.Col("Angle Scale Factor", () => GetInteractingHand().AngleScaleFactor);
-        _streamLog.Col("Gain Condition", () => GetInteractingHand().GainCondition);
 
         // Status
         _streamLog.Col("Is Grabbed", () => GetInteractingHand().IsGrabbed);
@@ -127,14 +126,16 @@ public class ExperimentLogManager : MonoBehaviour
         if (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
         {
             _eventLog.Col("Set Num", () => _sm.SetNum);
+            _eventLog.Col("Angle Index", () => _sm.AngleIndex);
+            _eventLog.Col("Axis Index", () => _sm.AxisIndex);
         }
         else
         {
             _eventLog.Col("Trial Num", () => _sm.TrialNum);
         }
 
-        _summaryLog.Col("Current Angle", () => _sm.CurrentAngle);
-        _summaryLog.ColVector3("Current Axis", () => _sm.CurrentAxis);
+        _eventLog.Col("Current Angle", () => _sm.CurrentAngle);
+        _eventLog.ColVector3("Current Axis", () => _sm.CurrentAxis);
 
         _eventLog.Col("Event Hand", () => _eventHandIndex);
         _eventLog.ColPose("Die World", () => GetDieWorldPose());
@@ -147,7 +148,8 @@ public class ExperimentLogManager : MonoBehaviour
         if (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
         {
             _summaryLog.Col("Set Num", () => _sm.SetNum);
-
+            _summaryLog.Col("Angle Index", () => _sm.AngleIndex);
+            _summaryLog.Col("Axis Index", () => _sm.AxisIndex);
         }
         else
         {

@@ -48,9 +48,9 @@ public class HandInteractor : MonoBehaviour
     private const float GRAB_DETECTION_RADIUS = 0.005f;
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
     private const float EURO_MIN_CUTOFF = 3.0f, EURO_BETA = 0.66f, EURO_D_CUTOFF = 1.0f;
-    private const float CLUTCH_DWELL_TIME = 0.2f, CLUTCH_DWELL_ROTATION = 0.1f;
+    private const float CLUTCH_DWELL_TIME =0.2f, CLUTCH_DWELL_ROTATION = 0.1f;
     private const float MIN_FINGER_SPEED = 0.013f, MAX_FINGER_SPEED = 0.42f; // m/s
-    private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 10f;
+    private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 12f;
 
     public event Action OnGrab, OnRelease, OnClutchEnd, OnClutchStart;
 
@@ -115,15 +115,6 @@ public class HandInteractor : MonoBehaviour
         // _debugText.text = $"{_gainCondition}\t{_angleScaleFactor}";
 
         foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
-
-        if (_grabbedObject == null) CheckGrab();
-        else CheckRelease();
-
-        if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
-        else _isDwelled = false;
-
-        if (_isDwelled && _isRotating) OnClutchStart?.Invoke();
-        if (!_isDwelled && !_isRotating) OnClutchEnd?.Invoke();
 
         // should be performed even if no object is grabbed
         // transforms are on the local coordinates based on the wrist if not stated otherwise
@@ -196,11 +187,24 @@ public class HandInteractor : MonoBehaviour
             _prevTriangle.rotation = _triangle.rotation;
         }
 
+        if (_grabbedObject == null) CheckGrab();
+        else CheckRelease();
+
         // skip from here if no object is grabbed
         if (_grabbedObject == null) return;
 
         // if (deltaAngle < CLUTCH_DWELL_ROTATION) _clutchDwellDuration += Time.deltaTime;
-        if (_fingerMaxSpeed < MIN_FINGER_SPEED) _clutchDwellDuration += Time.deltaTime;
+        if (!_isDwelled)
+        {
+            if (_fingerMaxSpeed < MIN_FINGER_SPEED) _clutchDwellDuration += Time.deltaTime;
+            // else if (_fingerMaxSpeed > MAX_FINGER_SPEED) _clutchDwellDuration = CLUTCH_DWELL_TIME + 0.1f;
+            else _clutchDwellDuration = 0f;
+        }
+
+        if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
+
+        if (_isDwelled && _isRotating) OnClutchStart?.Invoke();
+        // if (!_isDwelled && !_isRotating) OnClutchEnd?.Invoke();
 
         if (_isRotating)
         {
@@ -314,26 +318,6 @@ public class HandInteractor : MonoBehaviour
     {
         Collider[] colliders = Physics.OverlapSphere(tipPosition, GRAB_DETECTION_RADIUS, _interactableLayer);
         return colliders.Length > 0 ? colliders[0].gameObject : null;
-    }
-
-    private float GetFingerTravelDistance()
-    {
-        Vector3 thumb = _wristBone.Transform.InverseTransformPoint(_thumbTipBone.Transform.position);
-        Vector3 index = _wristBone.Transform.InverseTransformPoint(_indexTipBone.Transform.position);
-        Vector3 middle = _wristBone.Transform.InverseTransformPoint(_middleTipBone.Transform.position);
-
-        // in mm
-        float deltaThumb = (thumb - _prevThumbTip.position).magnitude * 1000f;
-        float deltaIndex = (index - _prevIndexTip.position).magnitude * 1000f;
-        float deltaMiddle = (middle - _prevMiddleTip.position).magnitude * 1000f;
-
-        float speedThumb = deltaThumb / Time.deltaTime;
-        float speedIndex = deltaIndex / Time.deltaTime;
-        float speedMiddle = deltaMiddle / Time.deltaTime;
-
-        // _text.text = $"{speedThumb:F2}\n{speedIndex:F2}\n{speedMiddle:F2}";
-
-        return deltaThumb + deltaIndex + deltaMiddle;
     }
 
     private float GetMaxFingerSpeed(Vector3 thumb, Vector3 index, Vector3 middle)
@@ -459,10 +443,19 @@ public class HandInteractor : MonoBehaviour
         GetOffset();
         _clutchDwellDuration = 0f;
         _isDwelled = false;
+        if (_grabbedObject != null)
+        {
+            _grabbedObject.SetOutlineWidth(OUTLINE_WIDTH_DEFAULT);
+            _grabbedObject.SetOutlineEnabled(true);
+        }
     }
 
     public void ReleaseObject()
     {
+        if (_grabbedObject != null)
+        {
+            _grabbedObject.SetOutlineEnabled(false);
+        }
         _grabbedObject = null;
         ResetGeometry();
         ResetOffset();

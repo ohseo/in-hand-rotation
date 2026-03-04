@@ -9,6 +9,7 @@ public class GrabbableObject : MonoBehaviour
 {
     private Transform _followTarget;
     private Outline _outline;
+    private const float OUTLINE_WIDTH_DEFAULT = 3f;
 
     void Awake()
     {
@@ -16,7 +17,7 @@ public class GrabbableObject : MonoBehaviour
         if (_outline != null)
         {
             _outline.OutlineColor = Color.blue;
-            _outline.OutlineWidth = 3f;
+            _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
             _outline.enabled = false;
         }
     }
@@ -33,18 +34,21 @@ public class GrabbableObject : MonoBehaviour
     public void OnGrab(Transform handTransform)
     {
         _followTarget = handTransform;
-        if (_outline != null) _outline.enabled = true;
     }
 
     public void OnRelease()
     {
         _followTarget = null;
-        if (_outline != null) _outline.enabled = false;
     }
 
     public void SetOutlineWidth(float width)
     {
         if (_outline != null) _outline.OutlineWidth = width;
+    }
+
+    public void SetOutlineEnabled(bool enabled)
+    {
+        if (_outline != null) _outline.enabled = enabled;
     }
 
     public void SetOutlineColor(Color c)
