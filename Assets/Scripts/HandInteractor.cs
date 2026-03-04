@@ -34,7 +34,7 @@ public class HandInteractor : MonoBehaviour
     private Pose _prevThumbTip, _prevIndexTip, _prevMiddleTip;
     private Pose _thumbTipEuro, _indexTipEuro, _middleTipEuro;
     private Pose _triangle, _prevTriangle;
-    private Pose _prevObject, _object, _objectWorld;
+    private Pose _prevObject, _object, _objectWorld, _objectLocal;
     private Pose _grabOffset, _grabOffsetTriangle;
     private float _angleScaleFactor = 1f;
     private float _clutchDwellDuration = 0f;
@@ -73,6 +73,7 @@ public class HandInteractor : MonoBehaviour
         //     sphere.GetComponent<Collider>().isTrigger = true;
         //     _spheres.Add(sphere);
         // }
+        _debugText.text = "";
 
         _oneEuroFiltersVector3 = new OneEuroFilter<Vector3>[3];
         for (int i = 0; i < 3; i++)
@@ -111,7 +112,7 @@ public class HandInteractor : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        _debugText.text = $"{_gainCondition}\t{_angleScaleFactor}";
+        // _debugText.text = $"{_gainCondition}\t{_angleScaleFactor}";
 
         foreach (var entry in _keyActions) if (Input.GetKey(entry.Key)) entry.Value.Invoke();
 
@@ -121,8 +122,8 @@ public class HandInteractor : MonoBehaviour
         if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
         else _isDwelled = false;
 
-        if (_isDwelled && _isRotating) StartClutching();
-        // if (!_isDwelled && !_isRotating) EndClutching();
+        if (_isDwelled && _isRotating) OnClutchStart?.Invoke();
+        if (!_isDwelled && !_isRotating) OnClutchEnd?.Invoke();
 
         // should be performed even if no object is grabbed
         // transforms are on the local coordinates based on the wrist if not stated otherwise
@@ -215,6 +216,8 @@ public class HandInteractor : MonoBehaviour
         }
 
         _objectWorld.position = _wristBone.Transform.TransformPoint(_triangle.position + _grabOffsetTriangle.position);
+        _objectLocal.position = Quaternion.Inverse(_wristWorld.rotation) * (_objectWorld.position - _wristWorld.position);
+        _objectLocal.rotation = Quaternion.Inverse(_wristWorld.rotation) * _objectWorld.rotation;
 
         _rotator.transform.position = _objectWorld.position;
         _rotator.transform.rotation = _objectWorld.rotation;
@@ -299,11 +302,9 @@ public class HandInteractor : MonoBehaviour
 
         if (contactCount < 2)
         {
-            OnClutchEnd?.Invoke();
-            OnRelease?.Invoke();
+            if (_isClutching) OnClutchEnd?.Invoke();
             _grabbedObject.OnRelease();
-            _grabbedObject = null;
-
+            OnRelease?.Invoke();
         }
     }
 
@@ -469,6 +470,7 @@ public class HandInteractor : MonoBehaviour
 
     public void ReleaseObject()
     {
+        _grabbedObject = null;
         ResetGeometry();
         ResetOffset();
         _clutchDwellDuration = 0f;
@@ -548,6 +550,7 @@ public class HandInteractor : MonoBehaviour
     public Vector3 TriangleCentroidPosition => _triangle.position;
     public Quaternion TriangleRotation => _triangle.rotation;
     public Pose ObjectWorldPose => _objectWorld;
+    public Pose ObjectLocalPose => _objectLocal;
     public float AngleScaleFactor => _angleScaleFactor;
     public bool IsRotating => _isRotating;
     public bool IsGrabbed => _grabbedObject != null;

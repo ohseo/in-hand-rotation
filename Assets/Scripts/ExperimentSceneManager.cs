@@ -14,9 +14,9 @@ public class ExperimentSceneManager : MonoBehaviour
     [SerializeField]
     private GameObject _arrowPrefab;
     [SerializeField]
-    private HandInteractor _handInteractorRight, _handInteractorLeft;
+    private List<HandInteractor> _handInteractors; // 0: Right, 1: Left
     [SerializeField]
-    private OVRSkeleton _ovrSkeletonRight, _ovrSkeletonLeft;
+    private List<OVRSkeleton> _ovrSkeletons; // 0: Right, 1: Left
     [SerializeField]
     private GameObject _centerEyeAnchor;
     [SerializeField]
@@ -73,7 +73,7 @@ public class ExperimentSceneManager : MonoBehaviour
     private const int MAX_TRIAL_NUM = 3;
     private int _trialNum = 1; // Num starts with 1, Index starts with 0
 
-    private const float POSITION_THRESHOLD = 0.01f, ROTATION_THRESHOLD_DEG = 5f;
+    private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 5f;
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration = 0f, _trialDuration = 0f;
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
@@ -82,10 +82,11 @@ public class ExperimentSceneManager : MonoBehaviour
 
     void Awake()
     {
-        _handInteractorRight.SetOVRSkeleton(_ovrSkeletonRight);
-        _handInteractorLeft.SetOVRSkeleton(_ovrSkeletonLeft);
-        _handInteractorRight.SetGainCondition((int)_gainType);
-        _handInteractorLeft.SetGainCondition((int)_gainType);
+        for (int i = 0; i < _handInteractors.Count; i++)
+        {
+            _handInteractors[i].SetOVRSkeleton(_ovrSkeletons[i]);
+            _handInteractors[i].SetGainCondition((int)_gainType);
+        }
 
         _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
         _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
@@ -101,14 +102,21 @@ public class ExperimentSceneManager : MonoBehaviour
         OnTrialStart += StartTrial;
 
         OnTrialEnd += EndTrial;
-        OnTrialEnd += _handInteractorLeft.Reset;
-        OnTrialEnd += _handInteractorRight.Reset;
-
         OnTrialReset += ResetTrial;
-        OnTrialReset += _handInteractorLeft.Reset;
-        OnTrialReset += _handInteractorRight.Reset;
-
         OnTimeout += TimeOut;
+
+        foreach (var h in _handInteractors)
+        {
+            OnTrialEnd += h.Reset;
+            OnTrialReset += h.Reset;
+            h.OnGrab += h.GrabObject;
+            h.OnGrab += OnGrab;
+            h.OnRelease += h.ReleaseObject;
+            h.OnClutchEnd += h.EndClutching;
+            h.OnClutchStart += h.StartClutching;
+            OnTarget += h.OnTarget;
+            OffTarget += h.OffTarget;
+        }
 
         if (!_isPracticeMode)
         {
@@ -119,38 +127,18 @@ public class ExperimentSceneManager : MonoBehaviour
             OnTarget += () => _logManager.OnEvent("On Target");
             OffTarget += () => _logManager.OnEvent("Off Target");
             OnTimeout += () => _logManager.OnEvent("Timeout");
+
+            for (int i = 0; i < _handInteractors.Count; i++)
+            {
+                int idx = i;
+                _handInteractors[idx].OnGrab += () => _logManager.OnEvent("Grab", idx);
+                _handInteractors[idx].OnRelease += () => _logManager.OnEvent("Release", idx);
+                _handInteractors[idx].OnClutchStart += () => _logManager.OnEvent("Clutch Start", idx);
+                _handInteractors[idx].OnClutchEnd += () => _logManager.OnEvent("Clutch End", idx);
+            }
         }
 
-        _handInteractorLeft.OnGrab += _handInteractorLeft.GrabObject;
-        _handInteractorLeft.OnGrab += OnGrab;
-        _handInteractorRight.OnGrab += _handInteractorRight.GrabObject;
-        _handInteractorRight.OnGrab += OnGrab;
-
-        _handInteractorLeft.OnRelease += _handInteractorLeft.ReleaseObject;
-        _handInteractorRight.OnRelease += _handInteractorRight.ReleaseObject;
-
-        _handInteractorLeft.OnClutchEnd += _handInteractorLeft.EndClutching;
-        _handInteractorRight.OnClutchEnd += _handInteractorRight.EndClutching;
-
-        _handInteractorLeft.OnClutchStart += _handInteractorLeft.StartClutching;
-        _handInteractorRight.OnClutchStart += _handInteractorRight.StartClutching;
-
-        if (!_isPracticeMode)
-        {
-            HandInteractor active = ActiveHand;
-            active.OnGrab += () => _logManager.OnEvent("Grab");
-            active.OnRelease += () => _logManager.OnEvent("Release");
-            active.OnClutchStart += () => _logManager.OnEvent("Clutch Start");
-            active.OnClutchEnd += () => _logManager.OnEvent("Clutch End");
-        }
-
-        OnTarget += _handInteractorLeft.OnTarget;
-        OnTarget += _handInteractorRight.OnTarget;
-
-        OffTarget += _handInteractorLeft.OffTarget;
-        OffTarget += _handInteractorRight.OffTarget;
-
-        if (!_isPracticeMode) _logManager.Initialize();
+        if (!_isPracticeMode) _logManager.Initialize(this);
 
         OnTrialLoad?.Invoke();
     }
@@ -438,9 +426,8 @@ public class ExperimentSceneManager : MonoBehaviour
     public Vector3 HeadPosition => _centerEyeAnchor.transform.position;
     public Quaternion HeadRotation => _centerEyeAnchor.transform.rotation;
 
-    public HandInteractor ActiveHand => _isLeftHanded ? _handInteractorLeft : _handInteractorRight;
-    public HandInteractor LeftHand => _handInteractorLeft;
-    public HandInteractor RightHand => _handInteractorRight;
+    public HandInteractor ActiveHand => _handInteractors[_isLeftHanded ? 1 : 0];
+    public List<HandInteractor> HandInteractors => _handInteractors;
 
     public Pose TargetOffset
     {

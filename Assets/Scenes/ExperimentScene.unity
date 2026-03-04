@@ -973,7 +973,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2c2d699f9297a7458eccb8be86cebaf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _sm: {fileID: 2137565705}
 --- !u!4 &228258073
 Transform:
   m_ObjectHideFlags: 0
@@ -10955,18 +10954,22 @@ MonoBehaviour:
   _diePrefab: {fileID: 1016349629435091919, guid: e5f635cbb30f1044ca3c8b4c620db24e, type: 3}
   _targetPrefab: {fileID: 1618645656371774453, guid: 86a01932818dd4045bc2e13c8229874a, type: 3}
   _arrowPrefab: {fileID: 9034380188908188678, guid: 3747f4197f58149518ec66a3a9522e06, type: 3}
-  _handInteractorRight: {fileID: 1104051524}
-  _handInteractorLeft: {fileID: 18630104}
-  _ovrSkeletonRight: {fileID: 643088644}
-  _ovrSkeletonLeft: {fileID: 750940862}
+  _handInteractors:
+  - {fileID: 1104051524}
+  - {fileID: 18630104}
+  _ovrSkeletons:
+  - {fileID: 643088644}
+  - {fileID: 750940862}
   _centerEyeAnchor: {fileID: 2139425078}
   _conditionText: {fileID: 740122283}
   _trialText: {fileID: 565504827}
+  _logManager: {fileID: 228258072}
   _participantNum: 0
   _isLeftHanded: 0
-  _expType: 1
-  _gainType: 1
+  _expType: 2
+  _gainType: 0
   _methodType: 2
+  _isPracticeMode: 0
 --- !u!1 &2138209759
 GameObject:
   m_ObjectHideFlags: 0
