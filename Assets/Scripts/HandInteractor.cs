@@ -36,6 +36,7 @@ public class HandInteractor : MonoBehaviour
     private Pose _triangle, _prevTriangle;
     private Pose _prevObject, _object, _objectWorld, _objectLocal;
     private Pose _grabOffset, _grabOffsetTriangle;
+    private float _triangleArea;
     private float _fingerMaxSpeed;
     private float _angleScaleFactor = 1f;
     private float _clutchDwellDuration = 0f;
@@ -155,7 +156,7 @@ public class HandInteractor : MonoBehaviour
 
         isAngleValid = CalculateAngleAtVertex(thumb, index, middle, out float triangleP1Angle);
         isTriangleValid = CalculateTriangleOrientationWithOffset(thumb, index, middle, out _triangle.rotation);
-        isAreaValid = CalculateTriangleArea(thumb, index, middle, out float triangleArea);
+        isAreaValid = CalculateTriangleArea(thumb, index, middle, out _triangleArea);
         _fingerMaxSpeed = GetMaxFingerSpeed(thumb, index, middle);
 
         if (_gainCondition != 0)
@@ -535,6 +536,7 @@ public class HandInteractor : MonoBehaviour
     public Vector3 MiddleTipLocalPosition => _middleTip.position;
     public Vector3 TriangleCentroidPosition => _triangle.position;
     public Quaternion TriangleRotation => _triangle.rotation;
+    public float TriangleArea => _triangleArea;
     public Pose ObjectWorldPose => _objectWorld;
     public Pose ObjectLocalPose => _objectLocal;
     public float AngleScaleFactor => _angleScaleFactor;

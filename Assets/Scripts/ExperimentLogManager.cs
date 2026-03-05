@@ -92,6 +92,7 @@ public class ExperimentLogManager : MonoBehaviour
         // Triangle
         _streamLog.ColVector3("Triangle Local Position", () => GetInteractingHand().TriangleCentroidPosition);
         _streamLog.ColQuaternion("Triangle Local Rotation", () => GetInteractingHand().TriangleRotation);
+        _streamLog.Col("Triangle Area", () => GetInteractingHand().TriangleArea);
 
         // Die (world)
         _streamLog.ColPose("Die World", () => GetDieWorldPose());
