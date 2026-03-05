@@ -25,6 +25,16 @@ public class ExperimentSceneManager : MonoBehaviour
     private TextMeshProUGUI _trialText;
     [SerializeField]
     private ExperimentLogManager _logManager;
+    [SerializeField]
+    private AudioSource _audioSource;
+
+    [Space]
+    [Header("Sound Effects")]
+    [SerializeField] private AudioClip _grabSound;
+    [SerializeField] private AudioClip _clutchStartSound;
+    [SerializeField] private AudioClip _trialEndSound;
+    [SerializeField] private AudioClip _timeoutSound;
+    [SerializeField] private AudioClip _blockEndSound;
 
     public enum ExpType { Optimization_Exp1 = 1, Evaluation_Exp2 = 2 }
     public enum GainType { Constant_O = 0, Low_A = 1, Medium_B = 2, High_C = 3 }
@@ -48,9 +58,9 @@ public class ExperimentSceneManager : MonoBehaviour
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
 
-    // EXP 1: 3 angles (balanced) * 4 sets * 6 axes (random)
+    // EXP 1: 3 angles (balanced) * 3 sets * 6 axes (random)
     private Vector3 INIT_POSITION_EXP1 = new Vector3(0.05f, 1f, 0.3f);
-    private const int MAX_SET_NUM = 4;
+    private const int MAX_SET_NUM = 3;
     private List<float> ROTATION_ANGLES = new List<float> { 30f, 120f, 210f };
     private List<Vector3> ROTATION_AXES = new List<Vector3>
     {
@@ -116,7 +126,13 @@ public class ExperimentSceneManager : MonoBehaviour
             h.OnClutchStart += h.StartClutching;
             OnTarget += h.OnTarget;
             OffTarget += h.OffTarget;
+
+            h.OnGrab += () => PlaySound(_grabSound);
+            h.OnClutchStart += () => PlaySound(_clutchStartSound);
         }
+
+        OnTrialEnd += () => PlaySound(_trialEndSound);
+        OnTimeout += () => PlaySound(_timeoutSound);
 
         if (!_isPracticeMode)
         {
@@ -245,7 +261,7 @@ public class ExperimentSceneManager : MonoBehaviour
                     _axisIndex = 0;
                     _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
                 }
-                if (_setNum > MAX_SET_NUM) { _angleIndex++; _setNum = 1; }
+                if (_setNum > MAX_SET_NUM) { _angleIndex++; _setNum = 1; PlaySound(_blockEndSound); }
                 else OnTrialLoad?.Invoke();
                 if (_angleIndex >= ROTATION_ANGLES.Count) Application.Quit();
                 break;
@@ -265,6 +281,11 @@ public class ExperimentSceneManager : MonoBehaviour
     private void OnGrab()
     {
         if (!_isInTrial) OnTrialStart?.Invoke();
+    }
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (_audioSource != null && clip != null) _audioSource.PlayOneShot(clip);
     }
 
     private void GenerateDie()
