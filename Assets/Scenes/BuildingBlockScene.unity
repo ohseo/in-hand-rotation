@@ -15461,6 +15461,9 @@ MonoBehaviour:
   _ovrSkeletons:
   - {fileID: 643088644}
   - {fileID: 750940862}
+  _touchInteractors:
+  - {fileID: 1011891046}
+  - {fileID: 1281876945}
   _centerEyeAnchor: {fileID: 2139425078}
   _conditionText: {fileID: 740122283}
   _trialText: {fileID: 565504827}

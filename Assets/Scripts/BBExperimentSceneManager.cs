@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using System;
+using Oculus.Interaction;
 
 public class BBExperimentSceneManager : MonoBehaviour
 {
@@ -17,6 +18,8 @@ public class BBExperimentSceneManager : MonoBehaviour
     private List<BBHandInteractor> _handInteractors; // 0: Right, 1: Left
     [SerializeField]
     private List<OVRSkeleton> _ovrSkeletons; // 0: Right, 1: Left
+    [SerializeField]
+    private List<TouchHandGrabInteractor> _touchInteractors; // 0: Right, 1: Left
     [SerializeField]
     private GameObject _centerEyeAnchor;
     [SerializeField]
@@ -89,7 +92,7 @@ public class BBExperimentSceneManager : MonoBehaviour
     private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 10f;
     private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration = 0f, _trialDuration = 0f;
-    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
+    private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false, _isGrabbing = false;
 
     private Pose _dieInitialPose;
     private bool _awaitingTrialStart = false;
@@ -105,8 +108,14 @@ public class BBExperimentSceneManager : MonoBehaviour
             _handInteractors[i].SetOVRSkeleton(_ovrSkeletons[i]);
         }
 
+        for (int i = 0; i < _touchInteractors.Count; i++)
+        {
+            _touchInteractors[i].WhenInteractableSelected.Action += OnGrab;
+            _touchInteractors[i].WhenInteractableUnselected.Action += OnRelease;
+        }
+
         // _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
-        _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
+            _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
 
         _conditionText.text = (_expType == ExpType.Optimization_Exp1) ? $"{_gainType}".Split('_')[1] : $"{_methodType}".Split('_')[1];
     }
@@ -307,11 +316,27 @@ public class BBExperimentSceneManager : MonoBehaviour
     private void DieOnTarget()
     {
         SetOutlineEnabled(true);
+        SetOutlineColor(Color.green);
     }
 
     private void DieOffTarget()
     {
-        SetOutlineEnabled(false);
+        if (!_isGrabbing) SetOutlineEnabled(false);
+        else SetOutlineColor(Color.blue);
+    }
+
+    private void OnGrab(TouchHandGrabInteractable i)
+    {
+        _isGrabbing = true;
+        SetOutlineEnabled(true);
+        if (!_isOnTarget) SetOutlineColor(Color.blue);
+        PlaySound(_grabSound);
+    }
+
+    private void OnRelease(TouchHandGrabInteractable i)
+    {
+        _isGrabbing = false;
+        if (!_isOnTarget) SetOutlineEnabled(false);
     }
 
     private void InitOutline()
