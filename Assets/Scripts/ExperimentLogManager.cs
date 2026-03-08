@@ -5,7 +5,7 @@ public class ExperimentLogManager : MonoBehaviour
 {
     private ExperimentSceneManager _sm;
 
-    private const string BASE_DIRECTORY_PATH = "D:/Data/";
+    private const string BASE_DIRECTORY_PATH = "D:/Data/EXP2/";
 
     private CsvLog _streamLog = new CsvLog();
     private CsvLog _eventLog = new CsvLog();
@@ -132,6 +132,7 @@ public class ExperimentLogManager : MonoBehaviour
         }
         else
         {
+            _eventLog.Col("Block Num", () => _sm.BlockNum);
             _eventLog.Col("Trial Num", () => _sm.TrialNum);
         }
 
@@ -154,6 +155,7 @@ public class ExperimentLogManager : MonoBehaviour
         }
         else
         {
+            _summaryLog.Col("Block Num", () => _sm.BlockNum);
             _summaryLog.Col("Trial Num", () => _sm.TrialNum);
         }
         _summaryLog.Col("Current Angle", () => _sm.CurrentAngle);
@@ -189,7 +191,7 @@ public class ExperimentLogManager : MonoBehaviour
             _streamLog.Close();
             string suffix = (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
                 ? $"_Set{_sm.SetNum}_Angle{_sm.CurrentAngle}_Axis{_sm.AxisIndex}"
-                : $"_Trial{_sm.TrialNum}";
+                : $"_Block{_sm.BlockNum}_Trial{_sm.TrialNum}";
             string streamPath = BASE_DIRECTORY_PATH + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + _conditionsSuffix + suffix;
             _streamLog.Open(streamPath + "_StreamData.csv");
         }

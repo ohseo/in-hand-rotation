@@ -38,7 +38,7 @@ public class ExperimentSceneManager : MonoBehaviour
 
     public enum ExpType { Optimization_Exp1 = 1, Evaluation_Exp2 = 2 }
     public enum GainType { Constant_O = 0, Low_A = 1, Medium_B = 2, High_C = 3 }
-    public enum MethodType { Baseline_B = 0, Physics_P = 1, Figeodex_F = 2 }
+    public enum MethodType { Baseline_X = 0, Physics_Y = 1, GeoCtrl_Z = 2 }
 
     [Space]
     [Header("Exp Information")]
@@ -47,11 +47,11 @@ public class ExperimentSceneManager : MonoBehaviour
     [SerializeField]
     private bool _isLeftHanded = false;
     [SerializeField]
-    private ExpType _expType = ExpType.Optimization_Exp1;
-    [SerializeField]
-    private GainType _gainType = GainType.Constant_O;
+    private ExpType _expType = ExpType.Evaluation_Exp2;
     // [SerializeField]
-    private MethodType _methodType = MethodType.Figeodex_F;
+    private GainType _gainType = GainType.Low_A;
+    [SerializeField]
+    private MethodType _methodType = MethodType.GeoCtrl_Z;
     [SerializeField]
     private bool _isPracticeMode = false;
 
@@ -80,11 +80,12 @@ public class ExperimentSceneManager : MonoBehaviour
     private Vector3 INIT_POSITION_EXP2 = new Vector3(0.05f, 1f, 0.3f);
     private const float INIT_ROTATION_DEG = 135f;
     private Vector3 _randomAxis;
-    private const int MAX_TRIAL_NUM = 40;
-    private int _trialNum = 1; // Num starts with 1, Index starts with 0
+    private const int MAX_TRIAL_NUM = 3;
+    private const int MAX_BLOCK_NUM = 3;
+    private int _trialNum = 1, _blockNum = 1; // Num starts with 1, Index starts with 0
 
     private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 10f;
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 10f;
     private float _dwellDuration = 0f, _trialDuration = 0f;
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
 
@@ -131,9 +132,6 @@ public class ExperimentSceneManager : MonoBehaviour
             h.OnClutchStart += () => PlaySound(_clutchStartSound);
         }
 
-        OnTrialEnd += () => PlaySound(_trialEndSound);
-        OnTimeout += () => PlaySound(_timeoutSound);
-
         if (!_isPracticeMode)
         {
             OnTrialLoad += () => _logManager.OnEvent("Trial Load");
@@ -165,6 +163,11 @@ public class ExperimentSceneManager : MonoBehaviour
         if (Input.GetKey(KeyCode.KeypadEnter))
         {
             if ((_expType == ExpType.Optimization_Exp1) && (_angleIndex < ROTATION_ANGLES.Count) && (_die == null))
+            {
+                OnTrialLoad?.Invoke();
+                return;
+            }
+            if ((_expType == ExpType.Evaluation_Exp2) && (_blockNum <= MAX_BLOCK_NUM) && (_die == null))
             {
                 OnTrialLoad?.Invoke();
                 return;
@@ -224,7 +227,7 @@ public class ExperimentSceneManager : MonoBehaviour
         GenerateTarget();
         _trialText.text = (_expType == ExpType.Optimization_Exp1) ?
             // $"{ROTATION_ANGLES[_latinSequence[_angleIndex]]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
-            $"{ROTATION_ANGLES[_angleIndex]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+            $"{ROTATION_ANGLES[_angleIndex]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}: Block {_blockNum}/{MAX_BLOCK_NUM}";
     }
 
     private void StartTrial()
@@ -236,6 +239,8 @@ public class ExperimentSceneManager : MonoBehaviour
 
     private void EndTrial()
     {
+        if (_isTimeout) PlaySound(_timeoutSound);
+        else PlaySound(_trialEndSound);
         DestroyDie();
         DestroyTarget();
         _isOnTarget = false;
@@ -267,7 +272,14 @@ public class ExperimentSceneManager : MonoBehaviour
                 break;
             case ExpType.Evaluation_Exp2:
             default:
-                if (_trialNum <= MAX_TRIAL_NUM) OnTrialLoad?.Invoke();
+                if (_trialNum > MAX_TRIAL_NUM)
+                {
+                    _blockNum++;
+                    if (_blockNum > MAX_BLOCK_NUM) Application.Quit();
+                    _trialNum = 1;
+                    PlaySound(_blockEndSound);
+                }
+                else OnTrialLoad?.Invoke();
                 break;
         }
     }
@@ -439,6 +451,7 @@ public class ExperimentSceneManager : MonoBehaviour
     public int SetNum => _setNum;
     public int AxisIndex => _axisIndex;
     public int TrialNum => _trialNum;
+    public int BlockNum => _blockNum;
 
     public float CurrentAngle => (_expType == ExpType.Optimization_Exp1 && _angleIndex < ROTATION_ANGLES.Count)
         // ? ROTATION_ANGLES[_latinSequence[_angleIndex]] : INIT_ROTATION_DEG;

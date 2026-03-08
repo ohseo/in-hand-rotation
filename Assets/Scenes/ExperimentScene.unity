@@ -10971,10 +10971,10 @@ MonoBehaviour:
   _trialEndSound: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
   _timeoutSound: {fileID: 8300000, guid: 89e6bc608da7b47d4914f3d9c2484e48, type: 3}
   _blockEndSound: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
-  _participantNum: 16
+  _participantNum: 0
   _isLeftHanded: 0
-  _expType: 1
-  _gainType: 2
+  _expType: 2
+  _methodType: 2
   _isPracticeMode: 0
 --- !u!82 &2137565706
 AudioSource:
