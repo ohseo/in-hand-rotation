@@ -40,7 +40,7 @@ public class HandInteractor : MonoBehaviour
     private float _fingerMaxSpeed;
     private float _angleScaleFactor = 1f;
     private float _clutchDwellDuration = 0f;
-    private bool _isDwelled = false, _isRotating = true, _isClutching = false;
+    private bool _isDwelled = false, _isRotating = true, _isClutching = false, _isOnTarget = false;
     private OneEuroFilter<Vector3>[] _oneEuroFiltersVector3;
     private SigmoidFunction _sigmoid = new SigmoidFunction();
 
@@ -455,7 +455,8 @@ public class HandInteractor : MonoBehaviour
     {
         if (_grabbedObject != null)
         {
-            _grabbedObject.SetOutlineEnabled(false);
+            _grabbedObject.SetOutlineWidth(OUTLINE_WIDTH_DEFAULT);
+            if (!_isOnTarget) _grabbedObject.SetOutlineEnabled(false);
         }
         _grabbedObject = null;
         ResetGeometry();
@@ -491,6 +492,7 @@ public class HandInteractor : MonoBehaviour
         if (_grabbedObject != null)
         {
             _grabbedObject.SetOutlineColor(Color.green);
+            _isOnTarget = true;
         }
     }
 
@@ -499,6 +501,7 @@ public class HandInteractor : MonoBehaviour
         if (_grabbedObject != null)
         {
             _grabbedObject.SetOutlineColor(Color.blue);
+            _isOnTarget = false;
         }
     }
 
