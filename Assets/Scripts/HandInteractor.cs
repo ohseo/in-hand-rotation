@@ -54,6 +54,7 @@ public class HandInteractor : MonoBehaviour
     private const float CLUTCH_DWELL_TIME =0.15f, CLUTCH_DWELL_ROTATION = 0.1f;
     private const float MIN_FINGER_SPEED = 0.013f, MAX_FINGER_SPEED = 0.42f; // m/s
     private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 12f;
+    private const float MIN_TRIANGLE_AREA = 0.70f;
 
     public event Action OnGrab, OnRelease, OnClutchEnd, OnClutchStart;
 
@@ -205,6 +206,7 @@ public class HandInteractor : MonoBehaviour
         }
 
         if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
+        if (_triangleArea < MIN_TRIANGLE_AREA) _isDwelled = true;
 
         if (_methodCondition != 0)
         {

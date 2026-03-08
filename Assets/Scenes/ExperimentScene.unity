@@ -10974,7 +10974,7 @@ MonoBehaviour:
   _participantNum: 0
   _isLeftHanded: 0
   _expType: 2
-  _methodType: 0
+  _methodType: 2
   _isPracticeMode: 0
 --- !u!82 &2137565706
 AudioSource:

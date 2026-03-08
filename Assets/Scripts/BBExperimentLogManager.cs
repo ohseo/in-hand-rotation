@@ -1,9 +1,9 @@
 using System;
 using UnityEngine;
 
-public class ExperimentLogManager : MonoBehaviour
+public class BBExperimentLogManager : MonoBehaviour
 {
-    private ExperimentSceneManager _sm;
+    private BBExperimentSceneManager _sm;
 
     private const string BASE_DIRECTORY_PATH = "D:/Data/EXP2/";
 
@@ -44,10 +44,10 @@ public class ExperimentLogManager : MonoBehaviour
     private Quaternion _prevHeadWorldRot;
     private float _totalHeadWorldTranslation, _totalHeadWorldRotation;
 
-    public void Initialize(ExperimentSceneManager sm)
+    public void Initialize(BBExperimentSceneManager sm)
     {
         _sm = sm;
-        string conditions = (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
+        string conditions = (_sm.Experiment == BBExperimentSceneManager.ExpType.Optimization_Exp1)
             ? $"_{_sm.Experiment}_P{_sm.ParticipantNum}_{_sm.Gain}"
             : $"_{_sm.Experiment}_P{_sm.ParticipantNum}_{_sm.Method}";
         _basePath = BASE_DIRECTORY_PATH + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + conditions;
@@ -100,21 +100,7 @@ public class ExperimentLogManager : MonoBehaviour
             _streamLog.ColVector3($"{h} Index Tip Local Position", () => _sm.HandInteractors[idx].IndexTipLocalPosition);
             _streamLog.ColVector3($"{h} Middle Tip Local Position", () => _sm.HandInteractors[idx].MiddleTipLocalPosition);
 
-            _streamLog.ColVector3($"{h} Thumb Tip Euro Position", () => _sm.HandInteractors[idx].ThumbTipEuroPosition);
-            _streamLog.ColVector3($"{h} Index Tip Euro Position", () => _sm.HandInteractors[idx].IndexTipEuroPosition);
-            _streamLog.ColVector3($"{h} Middle Tip Euro Position", () => _sm.HandInteractors[idx].MiddleTipEuroPosition);
-
-            _streamLog.ColVector3($"{h} Triangle Local Position", () => _sm.HandInteractors[idx].TriangleCentroidPosition);
-            _streamLog.ColQuaternion($"{h} Triangle Local Rotation", () => _sm.HandInteractors[idx].TriangleRotation);
-            _streamLog.Col($"{h} Triangle Area", () => _sm.HandInteractors[idx].TriangleArea);
-
             _streamLog.ColPose($"{h} Die Local", () => _sm.HandInteractors[idx].ObjectLocalPose);
-
-            _streamLog.Col($"{h} Angle Scale Factor", () => _sm.HandInteractors[idx].AngleScaleFactor);
-
-            _streamLog.Col($"{h} Is Grabbed", () => _sm.HandInteractors[idx].IsGrabbed);
-            _streamLog.Col($"{h} Is Rotating", () => _sm.HandInteractors[idx].IsRotating);
-            _streamLog.Col($"{h} Is Clutching", () => _sm.HandInteractors[idx].IsClutching);
         }
 
         // Die (world)
@@ -137,7 +123,7 @@ public class ExperimentLogManager : MonoBehaviour
         _eventLog.Col("Timestamp", () => _timestamp);
         _eventLog.Col("Trial Duration", () => _sm.TrialDuration);
 
-        if (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
+        if (_sm.Experiment == BBExperimentSceneManager.ExpType.Optimization_Exp1)
         {
             _eventLog.Col("Set Num", () => _sm.SetNum);
             _eventLog.Col("Angle Index", () => _sm.AngleIndex);
@@ -159,7 +145,7 @@ public class ExperimentLogManager : MonoBehaviour
 
     private void RegisterSummaryColumns()
     {
-        if (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
+        if (_sm.Experiment == BBExperimentSceneManager.ExpType.Optimization_Exp1)
         {
             _summaryLog.Col("Set Num", () => _sm.SetNum);
             _summaryLog.Col("Angle Index", () => _sm.AngleIndex);
@@ -206,7 +192,7 @@ public class ExperimentLogManager : MonoBehaviour
         if (eventName == "Trial Load")
         {
             _streamLog.Close();
-            string suffix = (_sm.Experiment == ExperimentSceneManager.ExpType.Optimization_Exp1)
+            string suffix = (_sm.Experiment == BBExperimentSceneManager.ExpType.Optimization_Exp1)
                 ? $"_Set{_sm.SetNum}_Angle{_sm.CurrentAngle}_Axis{_sm.AxisIndex}"
                 : $"_Block{_sm.BlockNum}_Trial{_sm.TrialNum}";
             string streamPath = BASE_DIRECTORY_PATH + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + _conditionsSuffix + suffix;
@@ -218,7 +204,7 @@ public class ExperimentLogManager : MonoBehaviour
         }
         else if (eventName == "Grab")
         {
-            ResetPrevPositions(handIndex);
+            ResetPrevPositions();
         }
         else if (eventName == "Trial End")
         {
@@ -232,8 +218,7 @@ public class ExperimentLogManager : MonoBehaviour
     {
         for (int i = 0; i < 2; i++)
         {
-            HandInteractor h = _sm.HandInteractors[i];
-            if (!h.IsGrabbed) continue;
+            BBHandInteractor h = _sm.HandInteractors[i];
 
             Vector3 thumbPos = h.ThumbTipLocalPosition;
             _totalThumbTipTranslation[i] += (thumbPos - _prevThumbTipLocal[i]).magnitude;
@@ -287,7 +272,7 @@ public class ExperimentLogManager : MonoBehaviour
     {
         for (int i = 0; i < 2; i++)
         {
-            HandInteractor h = _sm.HandInteractors[i];
+            BBHandInteractor h = _sm.HandInteractors[i];
 
             _prevThumbTipLocal[i] = h.ThumbTipLocalPosition;
             _prevIndexTipLocal[i] = h.IndexTipLocalPosition;
@@ -320,22 +305,30 @@ public class ExperimentLogManager : MonoBehaviour
         _totalHeadWorldRotation = 0f;
     }
 
-    private void ResetPrevPositions(int handIndex)
+    private void ResetPrevPositions()
     {
-        if (handIndex < 0 || handIndex >= 2) return;
+        for (int i = 0; i < 2; i++)
+        {
+            BBHandInteractor h = _sm.HandInteractors[i];
 
-        HandInteractor h = _sm.HandInteractors[handIndex];
+            _prevThumbTipLocal[i] = h.ThumbTipLocalPosition;
+            _prevIndexTipLocal[i] = h.IndexTipLocalPosition;
+            _prevMiddleTipLocal[i] = h.MiddleTipLocalPosition;
 
-        _prevThumbTipLocal[handIndex] = h.ThumbTipLocalPosition;
-        _prevIndexTipLocal[handIndex] = h.IndexTipLocalPosition;
-        _prevMiddleTipLocal[handIndex] = h.MiddleTipLocalPosition;
+            _prevWristWorldPos[i] = h.WristWorldPosition;
+            _prevWristWorldRot[i] = h.WristWorldRotation;
 
-        _prevWristWorldPos[handIndex] = h.WristWorldPosition;
-        _prevWristWorldRot[handIndex] = h.WristWorldRotation;
+            Pose dieLocal = h.ObjectLocalPose;
+            _prevDieLocalPos[i] = dieLocal.position;
+            _prevDieLocalRot[i] = dieLocal.rotation;
+        }
 
-        Pose dieLocal = h.ObjectLocalPose;
-        _prevDieLocalPos[handIndex] = dieLocal.position;
-        _prevDieLocalRot[handIndex] = dieLocal.rotation;
+        Transform dieT = _sm.DieTransform;
+        _prevDieWorldPos = dieT != null ? dieT.position : Vector3.zero;
+        _prevDieWorldRot = dieT != null ? dieT.rotation : Quaternion.identity;
+
+        _prevHeadWorldPos = _sm.HeadPosition;
+        _prevHeadWorldRot = _sm.HeadRotation;
     }
 
     private float AngleFromDelta(Quaternion q)

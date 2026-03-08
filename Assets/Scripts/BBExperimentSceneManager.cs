@@ -4,7 +4,7 @@ using UnityEngine;
 using TMPro;
 using System;
 
-public class ExperimentSceneManager : MonoBehaviour
+public class BBExperimentSceneManager : MonoBehaviour
 {
     [Header("Scene Setup")]
     [SerializeField]
@@ -14,7 +14,7 @@ public class ExperimentSceneManager : MonoBehaviour
     [SerializeField]
     private GameObject _arrowPrefab;
     [SerializeField]
-    private List<HandInteractor> _handInteractors; // 0: Right, 1: Left
+    private List<BBHandInteractor> _handInteractors; // 0: Right, 1: Left
     [SerializeField]
     private List<OVRSkeleton> _ovrSkeletons; // 0: Right, 1: Left
     [SerializeField]
@@ -24,7 +24,7 @@ public class ExperimentSceneManager : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI _trialText;
     [SerializeField]
-    private ExperimentLogManager _logManager;
+    private BBExperimentLogManager _logManager;
     [SerializeField]
     private AudioSource _audioSource;
 
@@ -57,6 +57,8 @@ public class ExperimentSceneManager : MonoBehaviour
 
     private GameObject _die, _target;
     private const float CUBE_SCALE = 0.04f;
+    private Outline _outline;
+    private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 12f;
 
     // EXP 1: 3 angles (balanced) * 3 sets * 6 axes (random)
     private Vector3 INIT_POSITION_EXP1 = new Vector3(0.05f, 1f, 0.3f);
@@ -101,8 +103,6 @@ public class ExperimentSceneManager : MonoBehaviour
         for (int i = 0; i < _handInteractors.Count; i++)
         {
             _handInteractors[i].SetOVRSkeleton(_ovrSkeletons[i]);
-            _handInteractors[i].SetGainCondition((int)_gainType);
-            _handInteractors[i].SetMethodCondition((int)_methodType);
         }
 
         // _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
@@ -122,20 +122,13 @@ public class ExperimentSceneManager : MonoBehaviour
         OnTrialReset += ResetTrial;
         OnTimeout += TimeOut;
 
+        OnTarget += DieOnTarget;
+        OffTarget += DieOffTarget;
+
         foreach (var h in _handInteractors)
         {
             OnTrialEnd += h.Reset;
             OnTrialReset += h.Reset;
-            h.OnGrab += h.GrabObject;
-            h.OnGrab += OnGrab;
-            h.OnRelease += h.ReleaseObject;
-            h.OnClutchEnd += h.EndClutching;
-            h.OnClutchStart += h.StartClutching;
-            OnTarget += h.OnTarget;
-            OffTarget += h.OffTarget;
-
-            h.OnGrab += () => PlaySound(_grabSound);
-            h.OnClutchStart += () => PlaySound(_clutchStartSound);
         }
 
         if (!_isPracticeMode)
@@ -153,8 +146,6 @@ public class ExperimentSceneManager : MonoBehaviour
                 int idx = i;
                 _handInteractors[idx].OnGrab += () => _logManager.OnEvent("Grab", idx);
                 _handInteractors[idx].OnRelease += () => _logManager.OnEvent("Release", idx);
-                _handInteractors[idx].OnClutchStart += () => _logManager.OnEvent("Clutch Start", idx);
-                _handInteractors[idx].OnClutchEnd += () => _logManager.OnEvent("Clutch End", idx);
             }
         }
 
@@ -313,8 +304,39 @@ public class ExperimentSceneManager : MonoBehaviour
         OnTrialEnd?.Invoke();
     }
 
-    private void OnGrab()
+    private void DieOnTarget()
     {
+        SetOutlineEnabled(true);
+    }
+
+    private void DieOffTarget()
+    {
+        SetOutlineEnabled(false);
+    }
+
+    private void InitOutline()
+    {
+        _outline = _die.GetComponentInChildren<Outline>();
+        if (_outline != null)
+        {
+            _outline.OutlineColor = Color.green;
+            _outline.OutlineWidth = OUTLINE_WIDTH_DEFAULT;
+            _outline.enabled = false;
+        }
+    }
+    public void SetOutlineWidth(float width)
+    {
+        if (_outline != null) _outline.OutlineWidth = width;
+    }
+
+    public void SetOutlineEnabled(bool enabled)
+    {
+        if (_outline != null) _outline.enabled = enabled;
+    }
+
+    public void SetOutlineColor(Color c)
+    {
+        if (_outline != null) _outline.OutlineColor = c;
     }
 
     private void PlaySound(AudioClip clip)
@@ -337,6 +359,8 @@ public class ExperimentSceneManager : MonoBehaviour
             DrawArrow(_die, axis);
         }
         else DisableAxis(_die);
+
+        InitOutline();
     }
 
     private void DestroyDie()
@@ -408,6 +432,7 @@ public class ExperimentSceneManager : MonoBehaviour
     {
         LineRenderer lr = go.GetComponent<LineRenderer>();
         lr.enabled = false;
+        return;
     }
 
     public static int[] GenerateLatinSquareSequence(int n, int pNum)
@@ -486,8 +511,8 @@ public class ExperimentSceneManager : MonoBehaviour
     public Vector3 HeadPosition => _centerEyeAnchor.transform.position;
     public Quaternion HeadRotation => _centerEyeAnchor.transform.rotation;
 
-    public HandInteractor ActiveHand => _handInteractors[_isLeftHanded ? 1 : 0];
-    public List<HandInteractor> HandInteractors => _handInteractors;
+    public BBHandInteractor ActiveHand => _handInteractors[_isLeftHanded ? 1 : 0];
+    public List<BBHandInteractor> HandInteractors => _handInteractors;
 
     public Pose TargetOffset
     {
