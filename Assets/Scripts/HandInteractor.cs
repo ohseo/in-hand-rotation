@@ -46,6 +46,7 @@ public class HandInteractor : MonoBehaviour
 
     private int _gainCondition = 1; // 0: Constant Gain, 1: Low, 2: Medium, 3: High
     private float _constantGain = 1.0f;
+    private int _methodCondition = 1; // 0: Baseline, 1: GeoCtrl
     private const float GRAB_DETECTION_RADIUS = 0.005f;
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
     private const float EURO_MIN_CUTOFF = 3.0f, EURO_BETA = 0.66f, EURO_D_CUTOFF = 1.0f;
@@ -204,10 +205,10 @@ public class HandInteractor : MonoBehaviour
 
         if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
 
-        if (_isDwelled && _isRotating) OnClutchStart?.Invoke();
+        if (_isDwelled && _isRotating && _methodCondition != 0) OnClutchStart?.Invoke();
         // if (!_isDwelled && !_isRotating) OnClutchEnd?.Invoke();
 
-        if (_isRotating)
+        if (_isRotating & _methodCondition !=0)
         {
             float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
             Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
@@ -521,6 +522,11 @@ public class HandInteractor : MonoBehaviour
     public void SetGainCondition(int i)
     {
         _gainCondition = i;
+    }
+
+    public void SetMethodCondition(int i)
+    {
+        _methodCondition = i;
     }
 
     public void SetInteractableLayer(LayerMask l)

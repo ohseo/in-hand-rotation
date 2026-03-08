@@ -80,12 +80,12 @@ public class ExperimentSceneManager : MonoBehaviour
     private Vector3 INIT_POSITION_EXP2 = new Vector3(0.05f, 1f, 0.3f);
     private const float INIT_ROTATION_DEG = 135f;
     private Vector3 _randomAxis;
-    private const int MAX_TRIAL_NUM = 3;
+    private const int MAX_TRIAL_NUM = 10;
     private const int MAX_BLOCK_NUM = 3;
     private int _trialNum = 1, _blockNum = 1; // Num starts with 1, Index starts with 0
 
     private const float POSITION_THRESHOLD = 0.02f, ROTATION_THRESHOLD_DEG = 10f;
-    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 10f;
+    private const float DWELL_THRESHOLD = 1f, TIMEOUT_THRESHOLD = 30f;
     private float _dwellDuration = 0f, _trialDuration = 0f;
     private bool _isOnTarget = false, _isTimeout = false, _isInTrial = false;
 
@@ -97,6 +97,7 @@ public class ExperimentSceneManager : MonoBehaviour
         {
             _handInteractors[i].SetOVRSkeleton(_ovrSkeletons[i]);
             _handInteractors[i].SetGainCondition((int)_gainType);
+            _handInteractors[i].SetMethodCondition((int)_methodType);
         }
 
         // _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
