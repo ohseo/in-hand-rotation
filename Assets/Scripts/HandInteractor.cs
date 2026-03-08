@@ -11,6 +11,7 @@ using Quaternion = UnityEngine.Quaternion;
 using System.Runtime.CompilerServices;
 using Oculus.Interaction;
 using System.IO;
+using Unity.XR.CoreUtils;
 
 public class HandInteractor : MonoBehaviour
 {
@@ -205,27 +206,36 @@ public class HandInteractor : MonoBehaviour
 
         if (_clutchDwellDuration > CLUTCH_DWELL_TIME) _isDwelled = true;
 
-        if (_isDwelled && _isRotating && _methodCondition != 0) OnClutchStart?.Invoke();
-        // if (!_isDwelled && !_isRotating) OnClutchEnd?.Invoke();
-
-        if (_isRotating & _methodCondition !=0)
+        if (_methodCondition != 0)
         {
-            float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
-            Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
-            // Quaternion deltaScaledRoation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
-            _object.rotation = deltaScaledRoation * _prevObject.rotation;
-            _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
-            _prevObject.rotation = _object.rotation;
+            if (_isDwelled && _isRotating) OnClutchStart?.Invoke();
+            // if (!_isDwelled && !_isRotating) OnClutchEnd?.Invoke();
+
+            if (_isRotating)
+            {
+                float angleWithCeiling = Math.Min(deltaAngle, MAX_ANGLE_BTW_FRAMES);
+                Quaternion deltaScaledRoation = Quaternion.AngleAxis(angleWithCeiling * _angleScaleFactor, deltaAxis);
+                // Quaternion deltaScaledRoation = Quaternion.AngleAxis(deltaAngle * _angleScaleFactor, deltaAxis);
+                _object.rotation = deltaScaledRoation * _prevObject.rotation;
+                _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
+                _prevObject.rotation = _object.rotation;
+            }
+            else
+            {
+                _object.rotation = _prevObject.rotation;
+                _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
+            }
+
+            _objectWorld.position = _wristBone.Transform.TransformPoint(_triangle.position + _grabOffsetTriangle.position);
+            _objectLocal.position = Quaternion.Inverse(_wristWorld.rotation) * (_objectWorld.position - _wristWorld.position);
+            _objectLocal.rotation = Quaternion.Inverse(_wristWorld.rotation) * _objectWorld.rotation;
         }
         else
         {
             _object.rotation = _prevObject.rotation;
+            _objectWorld.position = _wristBone.Transform.TransformPoint(_grabOffsetTriangle.position);
             _objectWorld.rotation = _wristWorld.rotation * _object.rotation * _grabOffset.rotation;
         }
-
-        _objectWorld.position = _wristBone.Transform.TransformPoint(_triangle.position + _grabOffsetTriangle.position);
-        _objectLocal.position = Quaternion.Inverse(_wristWorld.rotation) * (_objectWorld.position - _wristWorld.position);
-        _objectLocal.rotation = Quaternion.Inverse(_wristWorld.rotation) * _objectWorld.rotation;
 
         _rotator.transform.position = _objectWorld.position;
         _rotator.transform.rotation = _objectWorld.rotation;
@@ -277,7 +287,8 @@ public class HandInteractor : MonoBehaviour
         _grabOffset.position = _wristBone.Transform.InverseTransformPoint(_grabbedObject.transform.position);
         _grabOffset.rotation = Quaternion.Inverse(_wristBone.Transform.rotation) * _grabbedObject.transform.rotation;
         // _grabOffsetTriangle.position = _grabbedObject.transform.position - _wristBone.Transform.TransformPoint(_triangle.position);
-        _grabOffsetTriangle.position = _grabOffset.position - _triangle.position;
+        if (_methodCondition != 0) _grabOffsetTriangle.position = _grabOffset.position - _triangle.position;
+        else _grabOffsetTriangle.position = _grabOffset.position;
     }
 
     private void CheckGrab()
