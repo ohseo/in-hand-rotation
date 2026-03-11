@@ -247,9 +247,10 @@ public class ExperimentSceneManager : MonoBehaviour
         _awaitingTrialStart = true;
         GenerateTarget();
         // _trialText.text = (_expType == ExpType.Optimization_Exp1) ?
-            // $"{ROTATION_ANGLES[_latinSequence[_angleIndex]]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
+        // $"{ROTATION_ANGLES[_latinSequence[_angleIndex]]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}";
         // $"{ROTATION_ANGLES[_angleIndex]} deg: Set {_setNum}/{MAX_SET_NUM}" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}: Block {_blockNum}/{MAX_BLOCK_NUM}";
-        _trialText.text = _isPracticeMode ? "Practice Mode" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}: Block {_blockNum}/{MAX_BLOCK_NUM}";
+        // _trialText.text = _isPracticeMode ? "Practice Mode" : $"Trial {_trialNum}/{MAX_TRIAL_NUM}: Block {_blockNum}/{MAX_BLOCK_NUM}";
+        _trialText.text = "";
     }
 
     private void StartTrial()

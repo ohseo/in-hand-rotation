@@ -29,6 +29,7 @@ public class HandInteractor : MonoBehaviour
 
     private List<GameObject> _spheres = new List<GameObject>();
     private GameObject _thumbSphere, _indexSphere, _middleSphere;
+    private LineRenderer _lineRenderer = null;
 
     private Pose _wristWorld, _thumbTipWorld, _indexTipWorld, _middleTipWorld;
     private Pose _thumbTip, _indexTip, _middleTip;
@@ -58,6 +59,8 @@ public class HandInteractor : MonoBehaviour
 
     public event Action OnGrab, OnRelease, OnClutchEnd, OnClutchStart;
 
+    private bool _isSphereVisible = false, _isLineVisible = false;
+
     // private const string BASE_DIRECTORY_PATH = "D:/Temp/";
     // private FileStream _fileStream;
     // private StreamWriter _streamWriter;
@@ -70,13 +73,18 @@ public class HandInteractor : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        // for (int i = 0; i < 6; i++)
-        // {
-        //     GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        //     sphere.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
-        //     sphere.GetComponent<Collider>().isTrigger = true;
-        //     _spheres.Add(sphere);
-        // }
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+            sphere.GetComponent<Collider>().isTrigger = true;
+            sphere.GetComponent<Renderer>().enabled = _isSphereVisible;
+            _spheres.Add(sphere);
+        }
+        _lineRenderer = GetComponent<LineRenderer>();
+        _lineRenderer.positionCount = 4;
+        _lineRenderer.enabled = _isLineVisible;
+
         _debugText.text = "";
 
         _oneEuroFiltersVector3 = new OneEuroFilter<Vector3>[3];
@@ -97,7 +105,9 @@ public class HandInteractor : MonoBehaviour
             {KeyCode.Keypad2, () => _gainCondition = 2},
             {KeyCode.Keypad3, () => _gainCondition = 3},
             {KeyCode.KeypadPlus, () => _constantGain += 0.05f},
-            {KeyCode.KeypadMinus, () => _constantGain -= 0.05f}
+            {KeyCode.KeypadMinus, () => _constantGain -= 0.05f},
+            {KeyCode.KeypadEnter, () => ToggleSphereVisibility(!_isSphereVisible)},
+            {KeyCode.KeypadPeriod, () => ToggleLineVisibility(!_isLineVisible)}
         };
 
         // string fileName = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".csv";
@@ -145,9 +155,14 @@ public class HandInteractor : MonoBehaviour
         // index = _indexTip.position;
         // middle = _middleTip.position;
 
-        // _spheres[0].transform.position = thumb;
-        // _spheres[1].transform.position = index;
-        // _spheres[2].transform.position = middle;
+        _spheres[0].transform.position = _thumbTipBone.Transform.position;
+        _spheres[1].transform.position = _indexTipBone.Transform.position;
+        _spheres[2].transform.position = _middleTipBone.Transform.position;
+
+        _lineRenderer.SetPosition(0, _thumbTipBone.Transform.position);
+        _lineRenderer.SetPosition(1, _indexTipBone.Transform.position);
+        _lineRenderer.SetPosition(2, _middleTipBone.Transform.position);
+        _lineRenderer.SetPosition(3, _thumbTipBone.Transform.position);
 
         // _spheres[3].transform.position = _thumbTip.position;
         // _spheres[4].transform.position = _indexTip.position;
@@ -450,6 +465,21 @@ public class HandInteractor : MonoBehaviour
         orientation = baseRotation * Quaternion.Euler(0, angleOffset, 0);
 
         return true;
+    }
+
+    private void ToggleSphereVisibility(bool b)
+    {
+        _isSphereVisible = b;
+        foreach (GameObject sphere in _spheres)
+        {
+            sphere.GetComponent<Renderer>().enabled = b;
+        }
+    }
+
+    private void ToggleLineVisibility(bool b)
+    {
+        _isLineVisible = b;
+        _lineRenderer.enabled = gameObject;
     }
 
     public void GrabObject()

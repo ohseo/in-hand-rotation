@@ -14054,6 +14054,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _ovrCameraRig: {fileID: 2126774102}
+  _leftHand: {fileID: 0}
+  _rightHand: {fileID: 0}
   _requireOvrHands: 1
 --- !u!114 &947559422
 MonoBehaviour:
@@ -15478,7 +15480,7 @@ MonoBehaviour:
   _isLeftHanded: 0
   _expType: 2
   _methodType: 0
-  _isPracticeMode: 0
+  _isPracticeMode: 1
 --- !u!82 &1020644749
 AudioSource:
   m_ObjectHideFlags: 0
@@ -30867,7 +30869,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e933e81d3c20c74ea6fdc708a67e3a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useRecommendedMSAALevel: 1
   _monoscopic: 0
   _sharpenType: 0
   _enableDynamicResolution: 0
@@ -30881,8 +30882,13 @@ MonoBehaviour:
   maxRenderScale: 1
   _headPoseRelativeOffsetRotation: {x: 0, y: 0, z: 0}
   _headPoseRelativeOffsetTranslation: {x: 0, y: 0, z: 0}
-  profilerTcpPort: 32419
-  expandMixedRealityCapturePropertySheet: 0
+  enableCoreMetricsRelease: 0
+  enableCoreMetricsDevelopment: 1
+  coreMetricVisibility:
+    visibleMemoryMetricStats: 0
+    visibleMemoryMetricGraphs: 0
+    visibleRenderMetricStats: 0
+    visibleRenderMetricGraphs: 0
   enableMixedReality: 0
   compositionMethod: 0
   extraHiddenLayers:
@@ -30922,6 +30928,7 @@ MonoBehaviour:
   requestEyeTrackingPermissionOnStartup: 0
   requestScenePermissionOnStartup: 0
   requestRecordAudioPermissionOnStartup: 0
+  requestPassthroughCameraAccessPermissionOnStartup: 0
   _localDimming: 1
   _trackingOriginType: 1
   usePositionTracking: 1
