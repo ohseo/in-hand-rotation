@@ -46,16 +46,16 @@ public class HandInteractor : MonoBehaviour
     private OneEuroFilter<Vector3>[] _oneEuroFiltersVector3;
     private SigmoidFunction _sigmoid = new SigmoidFunction();
 
-    private int _gainCondition = 1; // 0: Constant Gain, 1: Low, 2: Medium, 3: High
+    private int _gainCondition = 0; // 0: Constant Gain, 1: Low, 2: Medium, 3: High
     private float _constantGain = 1.0f;
     private int _methodCondition = 1; // 0: Baseline, 1: GeoCtrl
     private const float GRAB_DETECTION_RADIUS = 0.005f;
     private const float LERP_SMOOTHING_FACTOR = 2f, MAX_ANGLE_BTW_FRAMES = 5f;
     private const float EURO_MIN_CUTOFF = 3.0f, EURO_BETA = 0.66f, EURO_D_CUTOFF = 1.0f;
-    private const float CLUTCH_DWELL_TIME =0.15f, CLUTCH_DWELL_ROTATION = 0.1f;
+    private const float CLUTCH_DWELL_TIME =2.0f, CLUTCH_DWELL_ROTATION = 0.1f;
     private const float MIN_FINGER_SPEED = 0.013f, MAX_FINGER_SPEED = 0.42f; // m/s
     private const float OUTLINE_WIDTH_DEFAULT = 3f, OUTLINE_WIDTH_CLUTCHING = 12f;
-    private const float MIN_TRIANGLE_AREA = 0.70f;
+    private const float MIN_TRIANGLE_AREA = 0.00001f;
 
     public event Action OnGrab, OnRelease, OnClutchEnd, OnClutchStart;
 
@@ -104,10 +104,12 @@ public class HandInteractor : MonoBehaviour
             {KeyCode.Keypad1, () => _gainCondition = 1},
             {KeyCode.Keypad2, () => _gainCondition = 2},
             {KeyCode.Keypad3, () => _gainCondition = 3},
-            {KeyCode.KeypadPlus, () => _constantGain += 0.05f},
-            {KeyCode.KeypadMinus, () => _constantGain -= 0.05f},
-            {KeyCode.KeypadEnter, () => ToggleSphereVisibility(!_isSphereVisible)},
-            {KeyCode.KeypadPeriod, () => ToggleLineVisibility(!_isLineVisible)}
+            // {KeyCode.KeypadPlus, () => _constantGain += 0.05f},
+            // {KeyCode.KeypadMinus, () => _constantGain -= 0.05f},
+            {KeyCode.KeypadEnter, () => ToggleSphereVisibility(true)},
+            {KeyCode.KeypadPlus, () => ToggleLineVisibility(true)},
+            {KeyCode.KeypadPeriod, () => ToggleSphereVisibility(false)},
+            {KeyCode.KeypadMinus, () => ToggleLineVisibility(false)}
         };
 
         // string fileName = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".csv";
@@ -479,7 +481,7 @@ public class HandInteractor : MonoBehaviour
     private void ToggleLineVisibility(bool b)
     {
         _isLineVisible = b;
-        _lineRenderer.enabled = gameObject;
+        _lineRenderer.enabled = b;
     }
 
     public void GrabObject()
