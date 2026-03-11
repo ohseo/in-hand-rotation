@@ -5,7 +5,7 @@ public class ExperimentLogManager : MonoBehaviour
 {
     private ExperimentSceneManager _sm;
 
-    private const string BASE_DIRECTORY_PATH = "D:/Data/EXP2/";
+    private const string BASE_DIRECTORY_PATH = "D:/Data_Exp2/";
 
     private CsvLog _streamLog = new CsvLog();
     private CsvLog _eventLog = new CsvLog();
