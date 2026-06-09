@@ -108,7 +108,7 @@ public class ExperimentSceneManager : MonoBehaviour
         // _latinSequence = GenerateLatinSquareSequence(ROTATION_ANGLES.Count, _participantNum);
         _randomSequence = GenerateRandomSequence(ROTATION_AXES.Count);
 
-        _conditionText.text = (_expType == ExpType.Optimization_Exp1) ? $"{_gainType}".Split('_')[1] : $"{_methodType}".Split('_')[1];
+        // _conditionText.text = (_expType == ExpType.Optimization_Exp1) ? $"{_gainType}".Split('_')[1] : $"{_methodType}".Split('_')[1];
     }
 
 
